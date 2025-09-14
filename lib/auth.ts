@@ -1,5 +1,5 @@
 import { NextAuthOptions } from "next-auth";
-import { DrizzleAdapter } from "@auth/drizzle-adapter";
+
 import CredentialsProvider from "next-auth/providers/credentials";
 import { db } from "./db";
 import * as schema from "../db/schema";
@@ -7,12 +7,6 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
-  adapter: DrizzleAdapter(db, {
-    usersTable: schema.users,
-    accountsTable: schema.accounts,
-    sessionsTable: schema.sessions,
-    verificationTokensTable: schema.verificationTokens,
-  }),
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -27,7 +21,7 @@ export const authOptions: NextAuthOptions = {
 
         // Find user in database
         const user = await db.select().from(schema.users).where(eq(schema.users.email, credentials.email)).limit(1);
-        
+
         if (user.length === 0) {
           return null;
         }
@@ -38,7 +32,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const isPasswordValid = await bcrypt.compare(credentials.password, user[0].password);
-        
+
         if (!isPasswordValid) {
           return null;
         }
@@ -67,7 +61,7 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token && session.user) {
-        session.user.id = token.id as string;
+        (session.user as any).id = token.id as string;
       }
       return session;
     },

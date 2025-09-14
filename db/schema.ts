@@ -3,10 +3,11 @@ import {
   pgTable,
   text,
   timestamp,
-  integer
+  integer,
+  uuid
 } from "drizzle-orm/pg-core";
 
-// ------------------ NextAuth Tables ------------------
+// ------------------ User Tables ------------------
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name"),
@@ -17,31 +18,43 @@ export const users = pgTable("users", {
   created_at: timestamp("created_at").defaultNow(),
 });
 
-export const accounts = pgTable("accounts", {
-  id: text("id").primaryKey(),
-  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  type: text("type").notNull(),
-  provider: text("provider").notNull(),
-  providerAccountId: text("providerAccountId").notNull(),
-  refresh_token: text("refresh_token"),
-  access_token: text("access_token"),
-  expires_at: integer("expires_at"),
-  token_type: text("token_type"),
-  scope: text("scope"),
-  id_token: text("id_token"),
-  session_state: text("session_state"),
+// ------------------ Linktree Tables ------------------
+export const themes = pgTable("themes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  primary_color: text("primary_color").notNull(),
+  secondary_color: text("secondary_color").notNull(),
+  background_style: text("background_style").notNull(),
 });
 
-export const sessions = pgTable("sessions", {
-  id: text("id").primaryKey(),
-  sessionToken: text("sessionToken").notNull().unique(),
-  userId: text("userId").notNull().references(() => users.id, { onDelete: "cascade" }),
-  expires: timestamp("expires").notNull(),
+export const profiles = pgTable("profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  user_id: text("user_id").notNull().references(() => users.id),
+  username: text("username").notNull().unique(),
+  display_name: text("display_name"),
+  bio: text("bio"),
+  avatar_url: text("avatar_url"),
+  theme_id: uuid("theme_id").references(() => themes.id),
+  created_at: timestamp("created_at").defaultNow(),
 });
 
-export const verificationTokens = pgTable("verificationTokens", {
-  identifier: text("identifier").notNull(),
-  token: text("token").notNull().unique(),
-  expires: timestamp("expires").notNull(),
+export const links = pgTable("links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  profile_id: uuid("profile_id").notNull().references(() => profiles.id),
+  title: text("title").notNull(),
+  url: text("url").notNull(),
+  order_index: integer("order_index").default(0),
+  icon: text("icon"),
+  created_at: timestamp("created_at").defaultNow(),
 });
+
+export const analytics = pgTable("analytics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  link_id: uuid("link_id").notNull().references(() => links.id),
+  clicked_at: timestamp("clicked_at").defaultNow(),
+  user_agent: text("user_agent"),
+  referrer: text("referrer"),
+});
+
+
 

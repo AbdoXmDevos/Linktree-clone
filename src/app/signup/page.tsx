@@ -25,7 +25,9 @@ export default function SignupPage() {
       });
 
       if (res.ok) {
-        router.push("/login?message=Account created successfully");
+        const data = await res.json();
+        // Redirect to profile creation with the user ID
+        router.push(`/create-profile?userId=${data.userId}`);
       } else {
         const data = await res.json();
         setError(data.error || "Signup failed");
