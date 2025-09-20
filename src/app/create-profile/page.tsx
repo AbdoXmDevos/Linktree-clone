@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import ProgressSteps from "../../components/ProgressSteps";
 
 export default function CreateProfilePage() {
   const [username, setUsername] = useState("");
@@ -84,7 +85,7 @@ export default function CreateProfilePage() {
 
       if (res.ok) {
         const data = await res.json();
-        router.push(`/dashboard?profileCreated=true`);
+        router.push(`/add-links?profileId=${data.profile.id}`);
       } else {
         const data = await res.json();
         setError(data.error || "Profile creation failed");
@@ -110,11 +111,16 @@ export default function CreateProfilePage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div>
+          <ProgressSteps 
+            currentStep={1} 
+            steps={["Create Profile", "Add Links", "Dashboard"]} 
+          />
+
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create Your Profile
+            Step 1: Create Your Profile
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Set up your linktree profile to get started
+            Set up your basic profile information to get started
           </p>
         </div>
         

@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import ProgressSteps from "../../components/ProgressSteps";
 
 interface Profile {
   id: string;
@@ -13,13 +14,22 @@ interface Profile {
   created_at: string;
 }
 
+interface Link {
+  id: string;
+  title: string;
+  url: string;
+  icon: string | null;
+  order_index: number;
+}
+
 export default function Dashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [links, setLinks] = useState<Link[]>([]);
   const [profileLoading, setProfileLoading] = useState(true);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [showSetupComplete, setShowSetupComplete] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -28,11 +38,16 @@ export default function Dashboard() {
   }, [status, router]);
 
   useEffect(() => {
-    if (searchParams.get("profileCreated") === "true") {
-      setShowSuccessMessage(true);
+    if (searchParams.get("setupComplete") === "true") {
+      setShowSetupComplete(true);
       // Remove the query parameter from URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, "", newUrl);
+      
+      // Hide the message after 10 seconds
+      setTimeout(() => {
+        setShowSetupComplete(false);
+      }, 10000);
     }
   }, [searchParams]);
 
@@ -41,6 +56,12 @@ export default function Dashboard() {
       fetchProfile();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (profile?.id) {
+      fetchLinks();
+    }
+  }, [profile]);
 
   const fetchProfile = async () => {
     try {
@@ -56,6 +77,18 @@ export default function Dashboard() {
       console.error("Error fetching profile:", error);
     } finally {
       setProfileLoading(false);
+    }
+  };
+
+  const fetchLinks = async () => {
+    try {
+      const res = await fetch(`/api/links?profileId=${profile?.id}`);
+      if (res.ok) {
+        const linksData = await res.json();
+        setLinks(linksData);
+      }
+    } catch (error) {
+      console.error("Error fetching links:", error);
     }
   };
 
@@ -75,9 +108,19 @@ export default function Dashboard() {
     <div className="min-h-screen bg-white">
       <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {showSuccessMessage && (
-            <div className="mb-6 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-              🎉 Profile created successfully! Welcome to your dashboard.
+          {/* Welcome Message */}
+          {showSetupComplete && (
+            <div className="mb-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg p-6">
+              <ProgressSteps 
+                currentStep={4} 
+                steps={["Create Profile", "Add Links", "Dashboard"]} 
+              />
+              <div className="text-center">
+                <h2 className="text-xl font-bold text-gray-900 mb-2">🎉 Setup Complete!</h2>
+                <p className="text-gray-600">
+                  Welcome to your dashboard. Your profile is live and ready to share!
+                </p>
+              </div>
             </div>
           )}
 
@@ -124,6 +167,62 @@ export default function Dashboard() {
             )}
           </div>
 
+          {/* Links Section */}
+          {profile && (
+            <div className="mt-6 bg-white p-6 rounded-lg shadow border">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-semibold text-black">Your Links ({links.length})</h2>
+                <button
+                  onClick={() => router.push(`/add-links?profileId=${profile.id}`)}
+                  className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded text-sm"
+                >
+                  {links.length === 0 ? "Add Your First Link" : "Manage Links"}
+                </button>
+              </div>
+              
+              {links.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="mb-2">No links added yet</p>
+                  <p className="text-sm">Add links to your social media, website, or anything you want to share</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {links.slice(0, 5).map((link) => (
+                    <div
+                      key={link.id}
+                      className="flex items-center justify-between p-3 border border-gray-200 rounded-md"
+                    >
+                      <div className="flex items-center space-x-3">
+                        {link.icon && (
+                          <span className="text-lg">{link.icon}</span>
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">{link.title}</p>
+                          <p className="text-sm text-gray-500 truncate max-w-xs">
+                            {link.url}
+                          </p>
+                        </div>
+                      </div>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                      >
+                        Visit
+                      </a>
+                    </div>
+                  ))}
+                  {links.length > 5 && (
+                    <p className="text-sm text-gray-500 text-center pt-2">
+                      And {links.length - 5} more links...
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Quick Actions */}
           <div className="mt-6 bg-white p-6 rounded-lg shadow border">
             <h2 className="text-xl font-semibold mb-4 text-black">Quick Actions</h2>
@@ -133,12 +232,20 @@ export default function Dashboard() {
                   <button className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded">
                     Edit Profile
                   </button>
-                  <button className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
-                    Add Links
+                  <button
+                    onClick={() => router.push(`/add-links?profileId=${profile.id}`)}
+                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+                  >
+                    Manage Links
                   </button>
-                  <button className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded">
-                    Customize Theme
-                  </button>
+                  <a
+                    href={`/${profile.username}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded inline-block"
+                  >
+                    View Public Profile
+                  </a>
                 </>
               )}
               <button

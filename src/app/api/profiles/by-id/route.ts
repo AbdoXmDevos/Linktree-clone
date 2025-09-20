@@ -6,27 +6,31 @@ import { eq } from "drizzle-orm";
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const username = searchParams.get("username");
+    const profileId = searchParams.get("profileId");
 
-    if (!username) {
+    if (!profileId) {
       return NextResponse.json(
-        { error: "Username is required" },
+        { error: "Profile ID is required" },
         { status: 400 }
       );
     }
 
-    // Check if username is already taken
-    const existingProfile = await db
+    const profile = await db
       .select()
       .from(schema.profiles)
-      .where(eq(schema.profiles.username, username))
+      .where(eq(schema.profiles.id, profileId))
       .limit(1);
 
-    return NextResponse.json({
-      available: existingProfile.length === 0,
-    });
+    if (profile.length === 0) {
+      return NextResponse.json(
+        { error: "Profile not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(profile[0]);
   } catch (error) {
-    console.error("Username check error:", error);
+    console.error("Profile fetch error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

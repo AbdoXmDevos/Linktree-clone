@@ -12,9 +12,11 @@
   "dependencies": {
     "@auth/drizzle-adapter": "^1.10.0",
     "@neondatabase/serverless": "^1.0.1",
+    "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.2",
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",
+    "jsonwebtoken": "^9.0.2",
     "next": "15.5.2",
     "next-auth": "^4.24.11",
     "postgres": "^3.4.7",
