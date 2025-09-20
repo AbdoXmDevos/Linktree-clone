@@ -6,9 +6,9 @@ import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password } = await request.json();
+    const { email, password } = await request.json();
 
-    if (!name || !email || !password) {
+    if (!email || !password) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       .insert(schema.users)
       .values({
         id: crypto.randomUUID(),
-        name,
+        name: null, // Will be set when user creates profile
         email,
         password: hashedPassword, // Store the hashed password
         emailVerified: null,

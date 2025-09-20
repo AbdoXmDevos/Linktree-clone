@@ -7,9 +7,9 @@ export async function POST(request: NextRequest) {
   try {
     const { userId, username, displayName, bio, avatarUrl } = await request.json();
 
-    if (!userId || !username) {
+    if (!userId || !username || !displayName) {
       return NextResponse.json(
-        { error: "User ID and username are required" },
+        { error: "User ID, username, and display name are required" },
         { status: 400 }
       );
     }
@@ -42,13 +42,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Update user's name with the display name
+    await db
+      .update(schema.users)
+      .set({ name: displayName })
+      .where(eq(schema.users.id, userId));
+
     // Create profile
     const newProfile = await db
       .insert(schema.profiles)
       .values({
         user_id: userId,
         username,
-        display_name: displayName || null,
+        display_name: displayName,
         bio: bio || null,
         avatar_url: avatarUrl || null,
         theme_id: null, // Will be set later when user chooses a theme
@@ -100,6 +106,57 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(profile[0]);
   } catch (error) {
     console.error("Profile fetch error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const { profileId, displayName, bio, avatarUrl } = await request.json();
+
+    if (!profileId || !displayName) {
+      return NextResponse.json(
+        { error: "Profile ID and display name are required" },
+        { status: 400 }
+      );
+    }
+
+    // Update profile
+    const updatedProfile = await db
+      .update(schema.profiles)
+      .set({
+        display_name: displayName,
+        bio: bio || null,
+        avatar_url: avatarUrl || null,
+      })
+      .where(eq(schema.profiles.id, profileId))
+      .returning();
+
+    if (updatedProfile.length === 0) {
+      return NextResponse.json(
+        { error: "Profile not found" },
+        { status: 404 }
+      );
+    }
+
+    // Also update the user's name in the users table
+    await db
+      .update(schema.users)
+      .set({ name: displayName })
+      .where(eq(schema.users.id, updatedProfile[0].user_id));
+
+    return NextResponse.json(
+      { 
+        message: "Profile updated successfully", 
+        profile: updatedProfile[0] 
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Profile update error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

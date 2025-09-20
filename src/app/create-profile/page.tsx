@@ -4,6 +4,25 @@ import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ProgressSteps from "../../components/ProgressSteps";
+import ImageUpload from "../../components/ImageUpload";
+import {
+  Container,
+  Paper,
+  Title,
+  Text,
+  TextInput,
+  Textarea,
+  Button,
+  Stack,
+  Alert,
+  Group,
+  Avatar,
+  Box,
+  Center,
+  Loader,
+  Anchor,
+} from "@mantine/core";
+import { IconCheck, IconX, IconUser } from "@tabler/icons-react";
 
 export default function CreateProfilePage() {
   const [username, setUsername] = useState("");
@@ -14,7 +33,7 @@ export default function CreateProfilePage() {
   const [loading, setLoading] = useState(false);
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null);
   const [checkingUsername, setCheckingUsername] = useState(false);
-  
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get("userId");
@@ -56,7 +75,7 @@ export default function CreateProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!userId) {
       setError("User ID is missing. Please sign up again.");
       return;
@@ -64,6 +83,11 @@ export default function CreateProfilePage() {
 
     if (!usernameAvailable) {
       setError("Please choose an available username.");
+      return;
+    }
+
+    if (!displayName.trim()) {
+      setError("Display name is required.");
       return;
     }
 
@@ -99,138 +123,235 @@ export default function CreateProfilePage() {
 
   if (!userId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600">Redirecting to signup...</p>
-        </div>
-      </div>
+      <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+        <Center h="100vh">
+          <Stack align="center" gap="md">
+            <Loader color="dark" size="lg" />
+            <Text c="dark.6">Redirecting to signup...</Text>
+          </Stack>
+        </Center>
+      </Box>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <ProgressSteps 
-            currentStep={1} 
-            steps={["Create Profile", "Add Links", "Dashboard"]} 
-          />
+    <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+      <Container size="md" py="xl">
+        <Stack gap="xl" align="center">
+          {/* Progress Stepper */}
+          <Box style={{ width: "100%", maxWidth: 600 }}>
+            <ProgressSteps
+              currentStep={1}
+              steps={["Create Profile", "Add Links", "Dashboard"]}
+            />
+          </Box>
 
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Step 1: Create Your Profile
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Set up your basic profile information to get started
-          </p>
-        </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          )}
-          
-          <div className="space-y-4">
-            {/* Username */}
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username *
-              </label>
-              <div className="mt-1 relative">
-                <input
-                  id="username"
-                  name="username"
-                  type="text"
-                  required
-                  className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                  placeholder="your-username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
-                />
-                {username && (
-                  <div className="mt-1 text-sm">
-                    {checkingUsername ? (
-                      <span className="text-gray-500">Checking availability...</span>
-                    ) : usernameAvailable === true ? (
-                      <span className="text-green-600">✓ Username available</span>
-                    ) : usernameAvailable === false ? (
-                      <span className="text-red-600">✗ Username taken</span>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </div>
+          {/* Main Content */}
+          <Paper
+            shadow="md"
+            p="2rem"
+            radius="lg"
+            withBorder
+            style={{ 
+              width: "100%", 
+              maxWidth: 500,
+              border: "2px solid #000000"
+            }}
+          >
+            <Stack gap="xl">
+              <Stack gap="sm" align="center">
+                <Title order={1} size="1.75rem" ta="center" c="black" fw={600}>
+                  Create Your Profile
+                </Title>
+                <Text size="md" c="dark.6" ta="center" style={{ lineHeight: 1.5 }}>
+                  Set up your basic profile information to get started with your personal link page
+                </Text>
+              </Stack>
 
-            {/* Display Name */}
-            <div>
-              <label htmlFor="displayName" className="block text-sm font-medium text-gray-700">
-                Display Name
-              </label>
-              <input
-                id="displayName"
-                name="displayName"
-                type="text"
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Your Display Name"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-              />
-            </div>
+              <form onSubmit={handleSubmit}>
+                <Stack gap="lg">
+                  {error && (
+                    <Alert 
+                      color="red" 
+                      radius="md"
+                      styles={{
+                        root: {
+                          border: "1px solid #fa5252"
+                        }
+                      }}
+                    >
+                      {error}
+                    </Alert>
+                  )}
 
-            {/* Bio */}
-            <div>
-              <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
-                Bio
-              </label>
-              <textarea
-                id="bio"
-                name="bio"
-                rows={3}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Tell people about yourself..."
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-              />
-            </div>
+                  {/* Username */}
+                  <Stack gap="xs">
+                    <TextInput
+                      label="Username"
+                      description="This will be your unique URL: yoursite.com/username"
+                      placeholder="your-username"
+                      required
+                      size="md"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9-_]/g, ''))}
+                      rightSection={
+                        username && (
+                          checkingUsername ? (
+                            <Loader size="sm" color="dark" />
+                          ) : usernameAvailable === true ? (
+                            <IconCheck size={18} color="#51cf66" />
+                          ) : usernameAvailable === false ? (
+                            <IconX size={18} color="#fa5252" />
+                          ) : null
+                        )
+                      }
+                      styles={{
+                        input: {
+                          borderColor: "#000000",
+                          borderWidth: "2px",
+                          "&:focus": {
+                            borderColor: "#000000",
+                          },
+                        },
+                        label: {
+                          fontWeight: 600,
+                          color: "#000000",
+                        },
+                        description: {
+                          fontSize: "0.8rem",
+                        },
+                      }}
+                    />
+                    {username && (
+                      <Text size="sm" fw={500} c={
+                        checkingUsername ? "dark.5" :
+                        usernameAvailable === true ? "green.6" :
+                        usernameAvailable === false ? "red.6" : "dark.5"
+                      }>
+                        {checkingUsername ? "Checking availability..." :
+                         usernameAvailable === true ? "✓ Username available" :
+                         usernameAvailable === false ? "✗ Username taken" : ""}
+                      </Text>
+                    )}
+                  </Stack>
 
-            {/* Avatar URL */}
-            <div>
-              <label htmlFor="avatarUrl" className="block text-sm font-medium text-gray-700">
-                Avatar URL (optional)
-              </label>
-              <input
-                id="avatarUrl"
-                name="avatarUrl"
-                type="url"
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="https://example.com/your-avatar.jpg"
-                value={avatarUrl}
-                onChange={(e) => setAvatarUrl(e.target.value)}
-              />
-            </div>
-          </div>
+                  {/* Display Name */}
+                  <TextInput
+                    label="Display Name"
+                    description="This is how your name will appear on your profile"
+                    placeholder="Your Display Name"
+                    required
+                    size="md"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    styles={{
+                      input: {
+                        borderColor: "#000000",
+                        borderWidth: "2px",
+                        "&:focus": {
+                          borderColor: "#000000",
+                        },
+                      },
+                      label: {
+                        fontWeight: 600,
+                        color: "#000000",
+                      },
+                      description: {
+                        fontSize: "0.8rem",
+                      },
+                    }}
+                  />
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading || !usernameAvailable || checkingUsername}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Creating profile..." : "Create Profile"}
-            </button>
-          </div>
+                  {/* Bio */}
+                  <Textarea
+                    label="Bio"
+                    description="Tell people about yourself (optional)"
+                    placeholder="Tell people about yourself..."
+                    rows={3}
+                    size="md"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    styles={{
+                      input: {
+                        borderColor: "#000000",
+                        borderWidth: "2px",
+                        "&:focus": {
+                          borderColor: "#000000",
+                        },
+                      },
+                      label: {
+                        fontWeight: 600,
+                        color: "#000000",
+                      },
+                      description: {
+                        fontSize: "0.8rem",
+                      },
+                    }}
+                  />
 
-          <div className="text-center">
-            <Link
-              href="/login"
-              className="text-sm text-indigo-600 hover:text-indigo-500"
-            >
-              Skip for now and sign in later
-            </Link>
-          </div>
-        </form>
-      </div>
-    </div>
+                  {/* Profile Picture Upload */}
+                  <Box>
+                    <Text size="sm" fw={600} c="black" mb="xs">
+                      Profile Picture
+                    </Text>
+                    <Text size="xs" c="dark.6" mb="md">
+                      Upload a profile picture to personalize your page (optional)
+                    </Text>
+                    {username ? (
+                      <ImageUpload
+                        onImageUpload={setAvatarUrl}
+                        username={username}
+                        currentImageUrl={avatarUrl}
+                        disabled={loading}
+                      />
+                    ) : (
+                      <Group>
+                        <Avatar size="xl" color="dark" variant="light">
+                          <IconUser size={32} />
+                        </Avatar>
+                        <Text size="sm" c="dark.5">
+                          Enter a username first to upload your profile picture
+                        </Text>
+                      </Group>
+                    )}
+                  </Box>
+
+                  <Button
+                    type="submit"
+                    fullWidth
+                    size="lg"
+                    color="dark"
+                    loading={loading}
+                    disabled={!usernameAvailable || checkingUsername}
+                    mt="lg"
+                    styles={{
+                      root: {
+                        height: "48px",
+                        fontSize: "1rem",
+                        fontWeight: 600,
+                      },
+                    }}
+                  >
+                    {loading ? "Creating profile..." : "Create Profile & Continue"}
+                  </Button>
+
+                  <Center>
+                    <Anchor
+                      component={Link}
+                      href="/login"
+                      size="sm"
+                      c="dark.6"
+                      td="underline"
+                    >
+                      Skip for now and sign in later
+                    </Anchor>
+                  </Center>
+                </Stack>
+              </form>
+            </Stack>
+          </Paper>
+        </Stack>
+      </Container>
+    </Box>
   );
 }
