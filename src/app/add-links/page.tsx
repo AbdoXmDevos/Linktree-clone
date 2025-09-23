@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession, signIn } from "next-auth/react";
 import ProgressSteps from "../../components/ProgressSteps";
@@ -37,7 +37,7 @@ interface Profile {
   display_name: string | null;
 }
 
-export default function AddLinksPage() {
+function AddLinksContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -549,5 +549,22 @@ export default function AddLinksPage() {
         </Stack>
       </Container>
     </Box>
+  );
+}
+
+export default function AddLinksPage() {
+  return (
+    <Suspense fallback={
+      <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+        <Center h="100vh">
+          <Stack align="center" gap="md">
+            <Loader color="dark" size="lg" />
+            <Text c="dark.6">Loading...</Text>
+          </Stack>
+        </Center>
+      </Box>
+    }>
+      <AddLinksContent />
+    </Suspense>
   );
 }
