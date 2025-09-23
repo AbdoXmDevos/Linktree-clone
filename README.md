@@ -1,36 +1,271 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Linktree Clone
+
+A modern Linktree clone built with Next.js, featuring user authentication, profile management, and customizable link pages.
+
+## Tech Stack
+
+- **Framework**: Next.js 15 with App Router
+- **Database**: PostgreSQL (Neon Database)
+- **ORM**: Drizzle ORM
+- **Authentication**: NextAuth.js with JWT strategy
+- **Styling**: Tailwind CSS
+- **Password Hashing**: bcryptjs
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- PostgreSQL database (we use Neon Database)
+
+### Installation
+
+1. Clone the repository
+2. Install dependencies:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+3. Set up environment variables in `.env.local`:
+```bash
+DATABASE_URL="your_postgresql_connection_string"
+NEXTAUTH_SECRET="your_nextauth_secret"
+NEXTAUTH_URL="http://localhost:3000"
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+4. Run database migrations:
+```bash
+npm run migration:generate
+npm run migration:migrate
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+5. Start the development server:
+```bash
+npm run dev
+```
 
-## Learn More
+Open [http://localhost:3000](http://localhost:3000) to see the application.
 
-To learn more about Next.js, take a look at the following resources:
+## Database Architecture
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Schema Overview
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The application uses a PostgreSQL database with the following main tables:
 
-## Deploy on Vercel
+#### Users Table
+- **Purpose**: Stores user authentication data
+- **Key Fields**: 
+  - `id` (text, primary key)
+  - `email` (unique, not null)
+  - `password` (hashed with bcryptjs)
+  - `name`, `image`, `emailVerified`
+  - `created_at` (timestamp)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+#### Profiles Table
+- **Purpose**: Stores user profile information for public pages
+- **Key Fields**:
+  - `id` (UUID, primary key)
+  - `user_id` (foreign key to users table)
+  - `username` (unique, for public URLs)
+  - `display_name`, `bio`, `avatar_url`
+  - `theme_id` (foreign key to themes)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+#### Links Table
+- **Purpose**: Stores individual links for each profile
+- **Key Fields**:
+  - `id` (UUID, primary key)
+  - `profile_id` (foreign key to profiles)
+  - `title`, `url`, `icon`
+  - `order_index` (for sorting)
+
+#### Additional Tables
+- **Themes**: Store customization options
+- **Analytics**: Track link clicks and user engagement
+
+### Database Functions
+
+#### Connection Setup
+```typescript
+// lib/db.ts
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+
+const client = postgres(process.env.DATABASE_URL!);
+export const db = drizzle(client);
+```
+
+#### Common Database Operations
+
+**User Creation** (during registration):
+```typescript
+const hashedPassword = await bcrypt.hash(password, 12);
+await db.insert(schema.users).values({
+  id: generateId(),
+  email,
+  password: hashedPassword,
+  name
+});
+```
+
+**Profile Management**:
+```typescript
+// Create profile
+await db.insert(schema.profiles).values({
+  user_id: userId,
+  username,
+  display_name: displayName,
+  bio,
+  avatar_url: avatarUrl
+});
+
+// Fetch profile
+const profile = await db
+  .select()
+  .from(schema.profiles)
+  .where(eq(schema.profiles.user_id, userId))
+  .limit(1);
+```
+
+## Authentication & Session Management
+
+### NextAuth.js Configuration
+
+The application uses NextAuth.js with a custom credentials provider and JWT strategy.
+
+#### Authentication Flow
+
+1. **Login Process**:
+   - User submits email/password via `/login` page
+   - Credentials provider validates against database
+   - Password verification using bcryptjs
+   - JWT token generated on successful authentication
+
+2. **Session Strategy**:
+   ```typescript
+   session: {
+     strategy: "jwt", // Uses JWT instead of database sessions
+   }
+   ```
+
+3. **JWT Callbacks**:
+   ```typescript
+   callbacks: {
+     async jwt({ token, user }) {
+       if (user) {
+         token.id = user.id; // Add user ID to token
+       }
+       return token;
+     },
+     async session({ session, token }) {
+       if (token && session.user) {
+         (session.user as any).id = token.id; // Add ID to session
+       }
+       return session;
+     },
+   }
+   ```
+
+### Access Token Management
+
+#### Token Generation
+- **Where**: Access tokens are generated by NextAuth.js during the authentication process
+- **Type**: JWT (JSON Web Tokens)
+- **Location**: Stored as HTTP-only cookies by NextAuth.js
+
+#### Token Storage
+- **Client-side**: Tokens are automatically managed by NextAuth.js
+- **Server-side**: No database storage needed (stateless JWT approach)
+- **Security**: HTTP-only cookies prevent XSS attacks
+
+#### Token Usage
+```typescript
+// In React components
+import { useSession } from "next-auth/react";
+
+function Dashboard() {
+  const { data: session, status } = useSession();
+  
+  if (status === "loading") return <p>Loading...</p>;
+  if (status === "unauthenticated") return <p>Access Denied</p>;
+  
+  // Access user data
+  const userId = session?.user?.id;
+  const email = session?.user?.email;
+}
+```
+
+```typescript
+// In API routes
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
+
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  
+  // Use session.user.id for database queries
+}
+```
+
+#### Token Lifecycle
+- **Expiration**: Managed by NextAuth.js (default 30 days)
+- **Refresh**: Automatic token refresh handled by NextAuth.js
+- **Logout**: Tokens cleared via `signOut()` function
+
+### Protected Routes
+
+Routes are protected using NextAuth.js session checks:
+
+```typescript
+// Client-side protection
+useEffect(() => {
+  if (status === "unauthenticated") {
+    router.push("/login");
+  }
+}, [status, router]);
+
+// Server-side protection (API routes)
+const session = await getServerSession(authOptions);
+if (!session) {
+  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+}
+```
+
+## API Routes
+
+### Profile Management
+- `POST /api/profiles` - Create new profile
+- `GET /api/profiles?userId=<id>` - Fetch user profile
+
+### Authentication Pages
+- `/login` - User login
+- `/register` - User registration  
+- `/dashboard` - Protected user dashboard
+- `/create-profile` - Profile creation form
+
+## Development Commands
+
+```bash
+# Development
+npm run dev                    # Start dev server with Turbopack
+
+# Database
+npm run migration:generate     # Generate new migrations
+npm run migration:migrate      # Apply migrations
+
+# Production
+npm run build                  # Build for production
+npm run start                  # Start production server
+```
+
+## Security Features
+
+- Password hashing with bcryptjs (12 rounds)
+- JWT-based authentication (stateless)
+- HTTP-only cookies for token storage
+- Protected API routes with session validation
+- Input validation and sanitization
+- Unique constraints on usernames and emails

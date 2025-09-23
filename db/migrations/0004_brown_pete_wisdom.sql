@@ -1,0 +1,1 @@
+-- Empty migration to fix sequence
