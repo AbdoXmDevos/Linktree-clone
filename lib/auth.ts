@@ -7,6 +7,7 @@ import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -58,12 +59,26 @@ export const authOptions: NextAuthOptions = {
   ],
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // 24 hours
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60 // 30 days
+      }
+    },
   },
   pages: {
     signIn: "/login",
   },
   callbacks: {
-    async jwt({ token, user, req }) {
+    async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
       }
@@ -76,4 +91,5 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
   },
+  debug: process.env.NODE_ENV === 'development',
 };

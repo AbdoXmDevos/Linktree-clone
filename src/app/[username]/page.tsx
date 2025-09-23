@@ -143,7 +143,7 @@ export default async function ProfilePage({
 
             {/* Footer */}
             <Text size="xs" c="dark.4" ta="center" mt="xl">
-              Powered by Linktree Clone
+              Powered by Cleverlink
             </Text>
           </Stack>
         </Center>

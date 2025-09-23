@@ -4,6 +4,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import ProgressSteps from "../../components/ProgressSteps";
+import { AuthGuard } from "../../components/AuthGuard";
 import {
   Container,
   Grid,
@@ -45,8 +46,8 @@ interface Link {
   order_index: number;
 }
 
-export default function Dashboard() {
-  const { data: session, status } = useSession();
+function DashboardContent() {
+  const { data: session } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -65,13 +66,7 @@ export default function Dashboard() {
   const [editError, setEditError] = useState("");
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [status, router]);
-
-  useEffect(() => {
-    if (searchParams.get("setupComplete") === "true") {
+    if (searchParams?.get("setupComplete") === "true") {
       setShowSetupComplete(true);
       // Remove the query parameter from URL
       const newUrl = window.location.pathname;
@@ -176,21 +171,17 @@ export default function Dashboard() {
     }
   };
 
-  if (status === "loading" || profileLoading) {
+  if (profileLoading) {
     return (
       <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
         <Center h="100vh">
           <Stack align="center" gap="md">
             <Loader color="dark" size="lg" />
-            <Text c="dark.6">Loading...</Text>
+            <Text c="dark.6">Loading profile...</Text>
           </Stack>
         </Center>
       </Box>
     );
-  }
-
-  if (!session) {
-    return null;
   }
 
   return (
@@ -530,5 +521,13 @@ export default function Dashboard() {
         </form>
       </Modal>
     </Box>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <AuthGuard>
+      <DashboardContent />
+    </AuthGuard>
   );
 }

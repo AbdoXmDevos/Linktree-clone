@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Linktree Clone",
-  description: "A simple linktree clone with NextAuth",
+  title: "Cleverlink",
+  description: "Many to one link !",
 };
 
 export default function RootLayout({

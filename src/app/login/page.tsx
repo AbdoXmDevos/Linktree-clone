@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,6 +17,7 @@ import {
   Center,
   Anchor,
   Box,
+  Loader,
 } from "@mantine/core";
 import { IconLogin } from "@tabler/icons-react";
 
@@ -26,6 +27,14 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.push("/dashboard");
+    }
+  }, [status, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,6 +59,25 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  // Show loading while checking authentication
+  if (status === "loading") {
+    return (
+      <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+        <Center h="100vh">
+          <Stack align="center" gap="md">
+            <Loader color="dark" size="lg" />
+            <Text c="dark.6">Loading...</Text>
+          </Stack>
+        </Center>
+      </Box>
+    );
+  }
+
+  // Don't render login form if already authenticated
+  if (status === "authenticated") {
+    return null;
+  }
 
   return (
     <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>

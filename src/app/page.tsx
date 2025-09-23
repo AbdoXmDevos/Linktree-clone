@@ -21,7 +21,7 @@ export default function Home() {
           {/* Header */}
           <Group justify="space-between" py="md">
             <Title order={2} c="black">
-              LinkTree Clone
+              Cleverlink
             </Title>
             <Group>
               <Button
