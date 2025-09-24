@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ProgressSteps from "../../components/ProgressSteps";
@@ -24,7 +24,7 @@ import {
 } from "@mantine/core";
 import { IconCheck, IconX, IconUser } from "@tabler/icons-react";
 
-export default function CreateProfilePage() {
+function CreateProfileContent() {
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
@@ -353,5 +353,22 @@ export default function CreateProfilePage() {
         </Stack>
       </Container>
     </Box>
+  );
+}
+
+export default function CreateProfilePage() {
+  return (
+    <Suspense fallback={
+      <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+        <Center h="100vh">
+          <Stack align="center" gap="md">
+            <Loader color="dark" size="lg" />
+            <Text c="dark.6">Loading...</Text>
+          </Stack>
+        </Center>
+      </Box>
+    }>
+      <CreateProfileContent />
+    </Suspense>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import ProgressSteps from "../../components/ProgressSteps";
 import { AuthGuard } from "../../components/AuthGuard";
 import {
@@ -527,7 +527,18 @@ function DashboardContent() {
 export default function Dashboard() {
   return (
     <AuthGuard>
-      <DashboardContent />
+      <Suspense fallback={
+        <Box style={{ minHeight: "100vh", backgroundColor: "#ffffff" }}>
+          <Center h="100vh">
+            <Stack align="center" gap="md">
+              <Loader color="dark" size="lg" />
+              <Text c="dark.6">Loading dashboard...</Text>
+            </Stack>
+          </Center>
+        </Box>
+      }>
+        <DashboardContent />
+      </Suspense>
     </AuthGuard>
   );
 }
