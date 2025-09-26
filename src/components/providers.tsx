@@ -20,9 +20,9 @@ const theme = createTheme({
       "#000000",
     ],
   },
-  fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+  fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   headings: {
-    fontFamily: "var(--font-geist-sans), system-ui, sans-serif",
+    fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
   },
 });
 

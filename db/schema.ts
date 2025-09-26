@@ -43,6 +43,7 @@ export const links = pgTable("links", {
   profile_id: uuid("profile_id").notNull().references(() => profiles.id),
   title: text("title").notNull(),
   url: text("url").notNull(),
+  description: text("description"),
   order_index: integer("order_index").default(0),
   icon: text("icon"),
   created_at: timestamp("created_at").defaultNow(),
@@ -55,6 +56,22 @@ export const analytics = pgTable("analytics", {
   user_agent: text("user_agent"),
   referrer: text("referrer"),
 });
+
+// Type exports for use in application
+export type User = typeof users.$inferSelect;
+export type NewUser = typeof users.$inferInsert;
+
+export type Theme = typeof themes.$inferSelect;
+export type NewTheme = typeof themes.$inferInsert;
+
+export type Profile = typeof profiles.$inferSelect;
+export type NewProfile = typeof profiles.$inferInsert;
+
+export type Link = typeof links.$inferSelect;
+export type NewLink = typeof links.$inferInsert;
+
+export type Analytics = typeof analytics.$inferSelect;
+export type NewAnalytics = typeof analytics.$inferInsert;
 
 
 
