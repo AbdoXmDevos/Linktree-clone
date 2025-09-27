@@ -1,6 +1,7 @@
 "use client";
 
 import { Group, Title, Text, Button, Stack, Badge } from "@mantine/core";
+import { useMediaQuery } from "@mantine/hooks";
 import { IconPlus, IconSearch } from "@tabler/icons-react";
 
 interface LinkManagementHeaderProps {
@@ -14,6 +15,8 @@ export function LinkManagementHeader({
   linkCount, 
   onAddLink 
 }: LinkManagementHeaderProps) {
+  const isMobile = useMediaQuery("(max-width: 768px)");
+  
   return (
     <Stack gap="md">
       {/* Main Header */}
@@ -38,11 +41,19 @@ export function LinkManagementHeader({
 
       {/* Primary Add Button */}
       <Button
-        leftSection={<IconPlus size={18} />}
-        size="lg"
+        leftSection={<IconPlus size={isMobile ? 20 : 18} />}
+        size={isMobile ? "xl" : "lg"}
         color="dark"
         onClick={onAddLink}
         fullWidth
+        className={isMobile ? "touch-button" : undefined}
+        styles={isMobile ? {
+          root: {
+            minHeight: "56px",
+            fontSize: "16px",
+            fontWeight: 600
+          }
+        } : undefined}
       >
         Add New Link
       </Button>

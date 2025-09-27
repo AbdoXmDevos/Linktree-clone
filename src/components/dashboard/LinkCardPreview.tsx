@@ -1,6 +1,8 @@
 "use client";
 
-import { Stack, Text, Card, Group, Center, Skeleton } from "@mantine/core";
+import { useState } from "react";
+import { Stack, Text, Card, Group, Center, Skeleton, Image, ThemeIcon } from "@mantine/core";
+import { IconLink, IconAlertCircle } from "@tabler/icons-react";
 
 interface Link {
   id: string;
@@ -22,6 +24,164 @@ interface SingleLinkCardProps {
   link: Link;
 }
 
+// Icon component with fallback handling
+function LinkIcon({ icon, title }: { icon?: string; title: string }) {
+  const [imageError, setImageError] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  if (!icon) {
+    return (
+      <div
+        style={{
+          width: 24,
+          height: 24,
+          minWidth: 24,
+          minHeight: 24,
+          flexShrink: 0
+        }}
+      >
+        <ThemeIcon
+          size="md"
+          radius="sm"
+          variant="light"
+          color="gray"
+        >
+          <IconLink size={16} />
+        </ThemeIcon>
+      </div>
+    );
+  }
+
+  // Check if icon is likely an emoji (simple heuristic)
+  const isEmoji = /^[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]|[\u{1F900}-\u{1F9FF}]|[\u{1FA70}-\u{1FAFF}]/u.test(icon);
+  
+  if (isEmoji) {
+    return (
+      <div
+        style={{
+          width: 24,
+          height: 24,
+          minWidth: 24,
+          minHeight: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}
+      >
+        <Text 
+          size="xl"
+          style={{
+            lineHeight: 1,
+            textAlign: "center"
+          }}
+        >
+          {icon}
+        </Text>
+      </div>
+    );
+  }
+
+  // Handle image URLs
+  const isImageUrl = /^https?:\/\/.+\.(jpg|jpeg|png|gif|svg|webp)(\?.*)?$/i.test(icon);
+  
+  if (isImageUrl && !imageError) {
+    return (
+      <div 
+        style={{ 
+          position: 'relative', 
+          width: 24, 
+          height: 24,
+          minWidth: 24,
+          minHeight: 24,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+          borderRadius: '4px'
+        }}
+      >
+        {isLoading && (
+          <Skeleton 
+            width={24} 
+            height={24} 
+            radius="sm"
+            style={{ position: 'absolute', top: 0, left: 0 }}
+          />
+        )}
+        <Image
+          src={icon}
+          alt={`Icon for ${title}`}
+          width={24}
+          height={24}
+          radius="sm"
+          style={{
+            objectFit: 'cover',
+            opacity: isLoading ? 0 : 1,
+            transition: 'opacity 0.2s ease',
+            width: '100%',
+            height: '100%'
+          }}
+          onLoad={() => setIsLoading(false)}
+          onLoadStart={() => setIsLoading(true)}
+          onError={() => {
+            setImageError(true);
+            setIsLoading(false);
+          }}
+        />
+      </div>
+    );
+  }
+
+  // Fallback for failed images or invalid URLs
+  if (imageError || (icon.startsWith('http') && !isImageUrl)) {
+    return (
+      <div
+        style={{
+          width: 24,
+          height: 24,
+          minWidth: 24,
+          minHeight: 24,
+          flexShrink: 0
+        }}
+      >
+        <ThemeIcon
+          size="md"
+          radius="sm"
+          variant="light"
+          color="red"
+          title="Failed to load image"
+        >
+          <IconAlertCircle size={16} />
+        </ThemeIcon>
+      </div>
+    );
+  }
+
+  // Fallback for any other case
+  return (
+    <div
+      style={{
+        width: 24,
+        height: 24,
+        minWidth: 24,
+        minHeight: 24,
+        flexShrink: 0
+      }}
+    >
+      <ThemeIcon
+        size="md"
+        radius="sm"
+        variant="light"
+        color="gray"
+      >
+        <IconLink size={16} />
+      </ThemeIcon>
+    </div>
+  );
+}
+
 function SingleLinkCard({ link }: SingleLinkCardProps) {
   return (
     <Card
@@ -40,17 +200,7 @@ function SingleLinkCard({ link }: SingleLinkCardProps) {
       className="link-card-preview"
     >
       <Group gap="md" align="center">
-        {link.icon && (
-          <Text 
-            size="xl"
-            style={{
-              minWidth: "24px",
-              textAlign: "center"
-            }}
-          >
-            {link.icon}
-          </Text>
-        )}
+        <LinkIcon icon={link.icon} title={link.title} />
         <Stack gap={2} style={{ flex: 1, minWidth: 0 }}>
           <Text 
             fw={600} 

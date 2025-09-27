@@ -10,7 +10,7 @@ interface MobileFrameProps {
 export function MobileFrame({ children }: MobileFrameProps) {
   return (
     <Card 
-      padding="xl" 
+      padding={{ base: "md", sm: "lg", md: "xl" }}
       radius="md" 
       withBorder 
       style={{ 
@@ -19,8 +19,10 @@ export function MobileFrame({ children }: MobileFrameProps) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        minHeight: "600px"
+        minHeight: "500px",
+        transition: "all 0.3s ease"
       }}
+      className="layout-transition"
     >
       <Box
         style={{
@@ -30,13 +32,12 @@ export function MobileFrame({ children }: MobileFrameProps) {
           borderRadius: "24px",
           border: "8px solid #000000",
           padding: "20px",
-          minHeight: "600px",
+          minHeight: "500px",
           maxHeight: "80vh",
           boxShadow: "0 20px 40px rgba(0, 0, 0, 0.1)",
           position: "relative",
           overflow: "hidden",
-          transition: "all 0.3s ease",
-          // Responsive scaling
+          transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
           transform: "scale(1)",
         }}
         className="mobile-frame"
@@ -51,7 +52,8 @@ export function MobileFrame({ children }: MobileFrameProps) {
             width: "60px",
             height: "4px",
             backgroundColor: "#000000",
-            borderRadius: "2px"
+            borderRadius: "2px",
+            transition: "all 0.3s ease"
           }}
         />
         
@@ -62,9 +64,10 @@ export function MobileFrame({ children }: MobileFrameProps) {
             overflowY: "auto",
             overflowX: "hidden",
             paddingTop: "16px",
-            // Custom scrollbar styling
             scrollbarWidth: "thin",
-            scrollbarColor: "#c1c1c1 transparent"
+            scrollbarColor: "#c1c1c1 transparent",
+            // Smooth scrolling
+            scrollBehavior: "smooth"
           }}
           className="mobile-content"
         >

@@ -19,3 +19,20 @@ export interface DashboardState {
   isAddingLink: boolean;
   isLoading: boolean;
 }
+
+// Enhanced dashboard state with error handling
+export interface EnhancedDashboardState extends DashboardState {
+  error: string | null;
+  isSubmitting: boolean;
+}
+
+// State management function types
+export interface DashboardStateActions {
+  setSelectedLink: (link: Link | null) => void;
+  setIsAddingLink: (isAdding: boolean) => void;
+  setIsSubmitting: (isSubmitting: boolean) => void;
+  clearError: () => void;
+  addLinkToState: (newLink: Link) => void;
+  updateLinkInState: (updatedLink: Link) => void;
+  removeLinkFromState: (linkId: string) => void;
+}
