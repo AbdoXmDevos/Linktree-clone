@@ -1,3 +1,7 @@
+/* Import design system styles */
+@import '../styles/css-variables.css';
+@import '../styles/utilities.css';
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -8,32 +12,35 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-  background-color: #ffffff;
-  color: #000000;
+  font-family: var(--font-family-sans) !important;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  scroll-behavior: smooth;
 }
 
-/* Force sans-serif font everywhere */
+/* Force design system font everywhere */
 * {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family: var(--font-family-sans) !important;
 }
 
-/* Custom scrollbar for webkit browsers */
+/* Enhanced scrollbar using design system */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-neutral-100);
+  border-radius: var(--radius-base);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: var(--color-neutral-300);
+  border-radius: var(--radius-base);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--color-neutral-400);
 }
 
 /* Mobile Frame responsive scaling */

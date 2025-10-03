@@ -413,6 +413,271 @@ export async function deleteLink(linkId: string): Promise<ActionResult<void>> {
   }
 }
 
+// Server action to reorder links with comprehensive error handling
+export async function reorderLinks(profileId: string, linkIds: string[]): Promise<ActionResult<Link[]>> {
+  try {
+    if (!profileId) {
+      return {
+        success: false,
+        error: createActionError('validation', 'Profile ID is required')
+      };
+    }
+
+    if (!linkIds || linkIds.length === 0) {
+      return {
+        success: false,
+        error: createActionError('validation', 'Link IDs are required')
+      };
+    }
+
+    // Check network connectivity
+    const isConnected = await checkNetworkConnectivity();
+    if (!isConnected) {
+      return {
+        success: false,
+        error: createActionError('network', 'Unable to connect to the database. Please check your internet connection and try again.', undefined, true)
+      };
+    }
+
+    // Update order_index for each link with retry mechanism
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        // Update each link's order_index based on its position in the array
+        const updatePromises = linkIds.map((linkId, index) =>
+          db
+            .update(schema.links)
+            .set({ order_index: index })
+            .where(eq(schema.links.id, linkId))
+        );
+
+        await Promise.all(updatePromises);
+
+        // Fetch the updated links to return
+        const updatedLinks = await db
+          .select()
+          .from(schema.links)
+          .where(eq(schema.links.profile_id, profileId))
+          .orderBy(schema.links.order_index);
+
+        // Revalidate the dashboard page to reflect changes
+        revalidatePath("/dashboard");
+        
+        return {
+          success: true,
+          data: updatedLinks
+        };
+      } catch (dbError: any) {
+        retryCount++;
+        
+        // If it's the last retry, throw the error
+        if (retryCount >= maxRetries) {
+          throw dbError;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
+    }
+
+    return {
+      success: false,
+      error: createActionError('unknown', 'Failed to reorder links after multiple attempts', undefined, true)
+    };
+
+  } catch (error: any) {
+    console.error("Reorder links error:", error);
+    
+    // Categorize the error
+    if (error.message?.includes('network') || error.code === 'ENOTFOUND') {
+      return {
+        success: false,
+        error: createActionError('network', 'Network error occurred. Please check your connection and try again.', undefined, true)
+      };
+    }
+    
+    return {
+      success: false,
+      error: createActionError('unknown', error.message || 'An unexpected error occurred while reordering links', undefined, true)
+    };
+  }
+}
+
+// Server action to bulk delete links with comprehensive error handling
+export async function bulkDeleteLinks(linkIds: string[]): Promise<ActionResult<void>> {
+  try {
+    if (!linkIds || linkIds.length === 0) {
+      return {
+        success: false,
+        error: createActionError('validation', 'Link IDs are required')
+      };
+    }
+
+    // Check network connectivity
+    const isConnected = await checkNetworkConnectivity();
+    if (!isConnected) {
+      return {
+        success: false,
+        error: createActionError('network', 'Unable to connect to the database. Please check your internet connection and try again.', undefined, true)
+      };
+    }
+
+    // Delete links with retry mechanism
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const deletedLinks = await Promise.all(
+          linkIds.map(linkId => 
+            db.delete(schema.links).where(eq(schema.links.id, linkId)).returning()
+          )
+        );
+
+        const deletedCount = deletedLinks.filter(result => result.length > 0).length;
+        
+        if (deletedCount === 0) {
+          return {
+            success: false,
+            error: createActionError('not_found', 'No links were found to delete')
+          };
+        }
+        
+        // Revalidate the dashboard page to reflect changes
+        revalidatePath("/dashboard");
+        
+        return { success: true };
+      } catch (dbError: any) {
+        retryCount++;
+        
+        // If it's the last retry, throw the error
+        if (retryCount >= maxRetries) {
+          throw dbError;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
+    }
+
+    return {
+      success: false,
+      error: createActionError('unknown', 'Failed to delete links after multiple attempts', undefined, true)
+    };
+
+  } catch (error: any) {
+    console.error("Bulk delete links error:", error);
+    
+    // Categorize the error
+    if (error.message?.includes('network') || error.code === 'ENOTFOUND') {
+      return {
+        success: false,
+        error: createActionError('network', 'Network error occurred. Please check your connection and try again.', undefined, true)
+      };
+    }
+    
+    return {
+      success: false,
+      error: createActionError('unknown', error.message || 'An unexpected error occurred while deleting links', undefined, true)
+    };
+  }
+}
+
+// Server action to bulk update link categories with comprehensive error handling
+export async function bulkUpdateLinkCategories(linkIds: string[], category: string): Promise<ActionResult<Link[]>> {
+  try {
+    if (!linkIds || linkIds.length === 0) {
+      return {
+        success: false,
+        error: createActionError('validation', 'Link IDs are required')
+      };
+    }
+
+    if (!category) {
+      return {
+        success: false,
+        error: createActionError('validation', 'Category is required')
+      };
+    }
+
+    // Check network connectivity
+    const isConnected = await checkNetworkConnectivity();
+    if (!isConnected) {
+      return {
+        success: false,
+        error: createActionError('network', 'Unable to connect to the database. Please check your internet connection and try again.', undefined, true)
+      };
+    }
+
+    // Update links with retry mechanism
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        const updatedLinks = await Promise.all(
+          linkIds.map(linkId => 
+            db.update(schema.links)
+              .set({ category })
+              .where(eq(schema.links.id, linkId))
+              .returning()
+          )
+        );
+
+        const flattenedLinks = updatedLinks.flat().filter(link => link);
+        
+        if (flattenedLinks.length === 0) {
+          return {
+            success: false,
+            error: createActionError('not_found', 'No links were found to update')
+          };
+        }
+        
+        // Revalidate the dashboard page to reflect changes
+        revalidatePath("/dashboard");
+        
+        return {
+          success: true,
+          data: flattenedLinks
+        };
+      } catch (dbError: any) {
+        retryCount++;
+        
+        // If it's the last retry, throw the error
+        if (retryCount >= maxRetries) {
+          throw dbError;
+        }
+        
+        // Wait before retrying (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount) * 1000));
+      }
+    }
+
+    return {
+      success: false,
+      error: createActionError('unknown', 'Failed to update links after multiple attempts', undefined, true)
+    };
+
+  } catch (error: any) {
+    console.error("Bulk update links error:", error);
+    
+    // Categorize the error
+    if (error.message?.includes('network') || error.code === 'ENOTFOUND') {
+      return {
+        success: false,
+        error: createActionError('network', 'Network error occurred. Please check your connection and try again.', undefined, true)
+      };
+    }
+    
+    return {
+      success: false,
+      error: createActionError('unknown', error.message || 'An unexpected error occurred while updating links', undefined, true)
+    };
+  }
+}
+
 // Server action to fetch links for a profile with comprehensive error handling
 export async function fetchLinks(profileId: string): Promise<ActionResult<Link[]>> {
   try {

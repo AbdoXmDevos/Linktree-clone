@@ -13,20 +13,17 @@ import {
   Text,
   AppShell,
   Tabs,
+  Button,
+  Group,
 } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
 import { LeftPanel } from "./LeftPanel";
 import { RightPanel } from "./RightPanel";
+import { DashboardHeader } from "./DashboardHeader";
 import type { Profile } from "../../../db/schema";
-import type { Link, DashboardState } from "../../../types/dashboard";
+import type { Link, DashboardState, EnhancedDashboardState, UserProfile, AnalyticsData, Category, LinkFormData } from "../../../types/dashboard";
 import { fetchLinks as fetchLinksAction } from "../../lib/actions/links";
-
-// Enhanced dashboard state interface with error handling
-interface EnhancedDashboardState extends DashboardState {
-  error: string | null;
-  isSubmitting: boolean;
-}
 
 export function DashboardLayout() {
   const { data: session } = useSession();
@@ -51,9 +48,47 @@ export function DashboardLayout() {
           const parsed = JSON.parse(savedState);
           return {
             ...parsed,
-            isLoading: true, // Always start with loading true
-            error: null, // Clear any previous errors
-            isSubmitting: false, // Clear submitting state
+            // Core data
+            profile: null,
+            analytics: null,
+            categories: [],
+            
+            // UI state
+            selectedLinks: [],
+            draggedLink: null,
+            previewMode: 'mobile' as const,
+            sidebarCollapsed: false,
+            
+            // Form state
+            activeForm: null,
+            formData: {
+              title: '',
+              url: '',
+              description: '',
+              icon: '',
+              tags: [],
+              customStyling: {
+                backgroundColor: '#ffffff',
+                textColor: '#000000',
+                borderRadius: 8,
+                borderColor: '#e2e8f0',
+                borderWidth: 1,
+                fontSize: 16,
+                fontWeight: 'normal' as const,
+                shadow: false,
+              },
+              isFeatured: false,
+            },
+            
+            // Loading states
+            isLoading: true,
+            isSaving: false,
+            isLoadingAnalytics: false,
+            
+            // Error handling
+            error: null,
+            errors: {},
+            notifications: [],
           };
         } catch (e) {
           console.warn('Failed to parse saved dashboard state:', e);
@@ -61,12 +96,50 @@ export function DashboardLayout() {
       }
     }
     return {
+      // Core data
       links: [],
       selectedLink: null,
       isAddingLink: false,
+      profile: null,
+      analytics: null,
+      categories: [],
+      
+      // UI state
+      selectedLinks: [],
+      draggedLink: null,
+      previewMode: 'mobile' as const,
+      sidebarCollapsed: false,
+      
+      // Form state
+      activeForm: null,
+      formData: {
+        title: '',
+        url: '',
+        description: '',
+        icon: '',
+        tags: [],
+        customStyling: {
+          backgroundColor: '#ffffff',
+          textColor: '#000000',
+          borderRadius: 8,
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          fontSize: 16,
+          fontWeight: 'normal' as const,
+          shadow: false,
+        },
+        isFeatured: false,
+      },
+      
+      // Loading states
       isLoading: true,
+      isSaving: false,
+      isLoadingAnalytics: false,
+      
+      // Error handling
       error: null,
-      isSubmitting: false,
+      errors: {},
+      notifications: [],
     };
   });
   const [activeTab, setActiveTab] = useState<string>(() => {
@@ -76,6 +149,10 @@ export function DashboardLayout() {
     }
     return "manage";
   });
+
+  // Header interaction states
+  const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 
   // Fetch profile data - only when session user ID changes and we don't have a profile
   useEffect(() => {
@@ -93,10 +170,12 @@ export function DashboardLayout() {
         links: dashboardState.links,
         selectedLink: dashboardState.selectedLink,
         isAddingLink: dashboardState.isAddingLink,
+        previewMode: dashboardState.previewMode,
+        sidebarCollapsed: dashboardState.sidebarCollapsed,
       };
       sessionStorage.setItem('dashboardState', JSON.stringify(stateToSave));
     }
-  }, [dashboardState.links, dashboardState.selectedLink, dashboardState.isAddingLink]);
+  }, [dashboardState.links, dashboardState.selectedLink, dashboardState.isAddingLink, dashboardState.previewMode, dashboardState.sidebarCollapsed]);
 
   // Persist active tab to sessionStorage
   useEffect(() => {
@@ -239,8 +318,8 @@ export function DashboardLayout() {
     updateDashboardState({ isAddingLink: isAdding });
   }, [updateDashboardState]);
 
-  const setIsSubmitting = useCallback((isSubmitting: boolean) => {
-    updateDashboardState({ isSubmitting });
+  const setIsSaving = useCallback((isSaving: boolean) => {
+    updateDashboardState({ isSaving });
   }, [updateDashboardState]);
 
   const clearError = useCallback(() => {
@@ -299,6 +378,11 @@ export function DashboardLayout() {
           transition: "all 0.3s ease"
         }}
       >
+        <DashboardHeader
+          profile={profile}
+          onProfileClick={() => setShowProfileSettings(true)}
+          onSettingsClick={() => setShowDashboardSettings(true)}
+        />
         <AppShell
           header={{ height: 0 }}
           navbar={{ width: 0, breakpoint: "sm" }}
@@ -368,7 +452,7 @@ export function DashboardLayout() {
                   onRefreshProfile={forceRefreshProfile}
                   setSelectedLink={setSelectedLink}
                   setIsAddingLink={setIsAddingLink}
-                  setIsSubmitting={setIsSubmitting}
+                  setIsSaving={setIsSaving}
                   clearError={clearError}
                   addLinkToState={addLinkToState}
                   updateLinkInState={updateLinkInState}
@@ -394,6 +478,96 @@ export function DashboardLayout() {
             </Tabs>
           </AppShell.Main>
         </AppShell>
+
+        {/* Profile Settings Modal */}
+        {showProfileSettings && (
+          <Box
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => setShowProfileSettings(false)}
+          >
+            <Box
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                maxWidth: '500px',
+                width: '100%',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Text size="lg" fw={600} mb="md">Profile Settings</Text>
+              <Text c="dimmed" mb="lg">
+                Profile settings functionality will be implemented in a future task.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="light" onClick={() => setShowProfileSettings(false)}>
+                  Close
+                </Button>
+              </Group>
+            </Box>
+          </Box>
+        )}
+
+        {/* Dashboard Settings Modal */}
+        {showDashboardSettings && (
+          <Box
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.5)',
+              backdropFilter: 'blur(4px)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1rem',
+            }}
+            onClick={() => setShowDashboardSettings(false)}
+          >
+            <Box
+              style={{
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                padding: '2rem',
+                maxWidth: '500px',
+                width: '100%',
+                maxHeight: '80vh',
+                overflow: 'auto',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Text size="lg" fw={600} mb="md">Dashboard Settings</Text>
+              <Text c="dimmed" mb="lg">
+                Dashboard settings functionality will be implemented in a future task.
+              </Text>
+              <Group justify="flex-end">
+                <Button variant="light" onClick={() => setShowDashboardSettings(false)}>
+                  Close
+                </Button>
+              </Group>
+            </Box>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -407,6 +581,11 @@ export function DashboardLayout() {
         transition: "all 0.3s ease"
       }}
     >
+      <DashboardHeader
+        profile={profile}
+        onProfileClick={() => setShowProfileSettings(true)}
+        onSettingsClick={() => setShowDashboardSettings(true)}
+      />
       <Container 
         size={isDesktop ? "xl" : "lg"} 
         px={isTablet ? "sm" : "md"} 
@@ -437,7 +616,7 @@ export function DashboardLayout() {
               onRefreshProfile={forceRefreshProfile}
               setSelectedLink={setSelectedLink}
               setIsAddingLink={setIsAddingLink}
-              setIsSubmitting={setIsSubmitting}
+              setIsSaving={setIsSaving}
               clearError={clearError}
               addLinkToState={addLinkToState}
               updateLinkInState={updateLinkInState}
@@ -461,6 +640,96 @@ export function DashboardLayout() {
           </Grid.Col>
         </Grid>
       </Container>
+
+      {/* Profile Settings Modal */}
+      {showProfileSettings && (
+        <Box
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => setShowProfileSettings(false)}
+        >
+          <Box
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Text size="lg" fw={600} mb="md">Profile Settings</Text>
+            <Text c="dimmed" mb="lg">
+              Profile settings functionality will be implemented in a future task.
+            </Text>
+            <Group justify="flex-end">
+              <Button variant="light" onClick={() => setShowProfileSettings(false)}>
+                Close
+              </Button>
+            </Group>
+          </Box>
+        </Box>
+      )}
+
+      {/* Dashboard Settings Modal */}
+      {showDashboardSettings && (
+        <Box
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 1000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={() => setShowDashboardSettings(false)}
+        >
+          <Box
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '2rem',
+              maxWidth: '500px',
+              width: '100%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Text size="lg" fw={600} mb="md">Dashboard Settings</Text>
+            <Text c="dimmed" mb="lg">
+              Dashboard settings functionality will be implemented in a future task.
+            </Text>
+            <Group justify="flex-end">
+              <Button variant="light" onClick={() => setShowDashboardSettings(false)}>
+                Close
+              </Button>
+            </Group>
+          </Box>
+        </Box>
+      )}
     </Box>
   );
 }

@@ -1,0 +1,2 @@
+-- Empty migration file to fix migration chain
+-- This migration was generated but the SQL file was missing

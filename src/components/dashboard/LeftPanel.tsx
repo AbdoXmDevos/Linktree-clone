@@ -7,9 +7,10 @@ import { IconCheck, IconX } from "@tabler/icons-react";
 import type { Profile } from "../../../db/schema";
 import type { Link, LinkFormData, EnhancedDashboardState } from "../../../types/dashboard";
 import { LinkManagementHeader } from "./LinkManagementHeader";
-import { LinkList } from "./LinkList";
+import { DragDropLinkList } from "./DragDropLinkList";
 import { LinkForm } from "./LinkForm";
 import { ProfileForm } from "./ProfileForm";
+import { AnalyticsWidget } from "./AnalyticsWidget";
 import { createLink, updateLink, deleteLink } from "../../lib/actions/links";
 
 interface LeftPanelProps {
@@ -20,7 +21,7 @@ interface LeftPanelProps {
   onRefreshProfile: () => void;
   setSelectedLink: (link: Link | null) => void;
   setIsAddingLink: (isAdding: boolean) => void;
-  setIsSubmitting: (isSubmitting: boolean) => void;
+  setIsSaving: (isSaving: boolean) => void;
   clearError: () => void;
   addLinkToState: (newLink: Link) => void;
   updateLinkInState: (updatedLink: Link) => void;
@@ -35,13 +36,13 @@ export function LeftPanel({
   onRefreshProfile,
   setSelectedLink,
   setIsAddingLink,
-  setIsSubmitting,
+  setIsSaving,
   clearError,
   addLinkToState,
   updateLinkInState,
   removeLinkFromState
 }: LeftPanelProps) {
-  const { links, selectedLink, isAddingLink, isSubmitting, error } = dashboardState;
+  const { links, selectedLink, isAddingLink, isSaving, error } = dashboardState;
   const [activeTab, setActiveTab] = useState<string | null>("profile");
 
   const handleAddLink = () => {
@@ -66,7 +67,7 @@ export function LeftPanel({
     if (!profile?.id) return;
 
     try {
-      setIsSubmitting(true);
+      setIsSaving(true);
       clearError();
 
       if (selectedLink) {
@@ -117,6 +118,10 @@ export function LeftPanel({
           description: formData.description || null,
           icon: formData.icon || null,
           order_index: links.length,
+          category: null,
+          tags: null,
+          custom_styling: null,
+          is_featured: false,
           created_at: new Date(),
         };
         
@@ -195,7 +200,7 @@ export function LeftPanel({
         autoClose: error?.retryable ? 8000 : 5000,
       });
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
 
@@ -270,7 +275,7 @@ export function LeftPanel({
 
   const handleProfileSubmit = async (profileData: any) => {
     try {
-      setIsSubmitting(true);
+      setIsSaving(true);
       clearError();
       
       // Call the profile update API
@@ -331,7 +336,7 @@ export function LeftPanel({
         autoClose: 8000,
       });
     } finally {
-      setIsSubmitting(false);
+      setIsSaving(false);
     }
   };
 
@@ -361,6 +366,15 @@ export function LeftPanel({
           >
             Links
           </Tabs.Tab>
+          <Tabs.Tab
+            value="analytics"
+            style={{
+              transition: "all 0.2s ease",
+              fontWeight: activeTab === "analytics" ? 600 : 400
+            }}
+          >
+            Analytics
+          </Tabs.Tab>
         </Tabs.List>
 
         <Box style={{ flex: 1, paddingTop: "1rem" }}>
@@ -369,7 +383,7 @@ export function LeftPanel({
               <ProfileForm
                 profile={profile}
                 onSubmit={handleProfileSubmit}
-                isLoading={isSubmitting}
+                isLoading={isSaving}
                 error={error}
               />
             </Card>
@@ -387,14 +401,39 @@ export function LeftPanel({
               </Card>
 
               {/* Links List */}
-              <LinkList
+              <DragDropLinkList
                 links={links}
                 selectedLink={selectedLink}
+                selectedLinks={dashboardState.selectedLinks || []}
                 onEditLink={handleEditLink}
                 onDeleteLink={handleDeleteLink}
                 onAddLink={handleAddLink}
+                onSelectLink={(linkId, isSelected) => {
+                  const currentSelected = dashboardState.selectedLinks || [];
+                  const newSelected = isSelected
+                    ? [...currentSelected, linkId]
+                    : currentSelected.filter(id => id !== linkId);
+                  updateDashboardState({ selectedLinks: newSelected });
+                }}
+                profileId={profile.id}
+                onLinksReorder={(reorderedLinks) => {
+                  updateDashboardState({ links: reorderedLinks });
+                }}
+                onLinksUpdate={(updatedLinks) => {
+                  updateDashboardState({ links: updatedLinks });
+                }}
               />
             </Stack>
+          </Tabs.Panel>
+
+          <Tabs.Panel value="analytics" style={{ height: "100%" }}>
+            <AnalyticsWidget 
+              profileId={profile.id}
+              onViewDetails={() => {
+                // This could open the analytics modal or navigate to analytics tab in right panel
+                console.log("View detailed analytics");
+              }}
+            />
           </Tabs.Panel>
         </Box>
       </Tabs>
@@ -405,7 +444,7 @@ export function LeftPanel({
         onClose={handleCloseForm}
         onSubmit={handleSubmitForm}
         editingLink={selectedLink}
-        isLoading={isSubmitting}
+        isLoading={isSaving}
         error={error}
       />
     </Stack>

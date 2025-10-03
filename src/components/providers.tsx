@@ -1,30 +1,14 @@
 "use client";
 
 import { SessionProvider } from "next-auth/react";
-import { MantineProvider, createTheme } from "@mantine/core";
+import { MantineProvider } from "@mantine/core";
+import { Notifications } from "@mantine/notifications";
 import "@mantine/core/styles.css";
-
-const theme = createTheme({
-  primaryColor: "dark",
-  colors: {
-    dark: [
-      "#f8f9fa",
-      "#e9ecef",
-      "#dee2e6",
-      "#ced4da",
-      "#adb5bd",
-      "#6c757d",
-      "#495057",
-      "#343a40",
-      "#212529",
-      "#000000",
-    ],
-  },
-  fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  headings: {
-    fontFamily: "Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-  },
-});
+import "@mantine/notifications/styles.css";
+import { enhancedTheme } from "../styles/mantine-theme";
+import { ThemeProvider } from "../contexts/ThemeContext";
+import "../styles/css-variables.css";
+import "../styles/utilities.css";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -32,8 +16,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
       refetchInterval={5 * 60} // Refetch session every 5 minutes
       refetchOnWindowFocus={true} // Refetch when window gains focus
     >
-      <MantineProvider theme={theme} defaultColorScheme="light">
-        {children}
+      <MantineProvider theme={enhancedTheme} defaultColorScheme="light">
+        <ThemeProvider>
+          <Notifications position="top-right" zIndex={1700} />
+          {children}
+        </ThemeProvider>
       </MantineProvider>
     </SessionProvider>
   );
