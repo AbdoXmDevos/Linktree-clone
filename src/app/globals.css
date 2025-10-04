@@ -1,3 +1,8 @@
+/* Import design system styles */
+@import '../styles/css-variables.css';
+@import '../styles/utilities.css';
+@import '../styles/responsive-utilities.css';
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -8,32 +13,35 @@ html,
 body {
   max-width: 100vw;
   overflow-x: hidden;
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-  background-color: #ffffff;
-  color: #000000;
+  font-family: var(--font-family-sans) !important;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  scroll-behavior: smooth;
 }
 
-/* Force sans-serif font everywhere */
+/* Force design system font everywhere */
 * {
-  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  font-family: var(--font-family-sans) !important;
 }
 
-/* Custom scrollbar for webkit browsers */
+/* Enhanced scrollbar using design system */
 ::-webkit-scrollbar {
   width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-neutral-100);
+  border-radius: var(--radius-base);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 4px;
+  background: var(--color-neutral-300);
+  border-radius: var(--radius-base);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
+  background: var(--color-neutral-400);
 }
 
 /* Mobile Frame responsive scaling */
@@ -84,4 +92,274 @@ body {
 .link-card-preview:active {
   transform: translateY(0) !important;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+/* Real-time preview transitions */
+.link-card-preview {
+  transition: all 0.2s ease-in-out;
+  animation: fadeInUp 0.3s ease-out;
+}
+
+.link-card-preview:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Fade in animation for new links */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading skeleton animation */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.skeleton-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Smooth transitions for form states */
+.form-transition {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Preview container smooth updates */
+.preview-container {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.preview-container.updating {
+  opacity: 0.7;
+}
+
+/* Mobile tab panel animations */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Mobile panel slide transitions */
+.mobile-panel-slide {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+/* Mobile content scrolling */
+.mobile-content {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+}
+
+/* Responsive layout transitions */
+.layout-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced mobile frame responsive scaling */
+@media (max-width: 1024px) and (min-width: 769px) {
+  .mobile-frame {
+    transform: scale(0.9);
+    width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-frame {
+    transform: scale(0.8);
+    width: 280px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .mobile-frame {
+    transform: scale(0.7);
+    width: 260px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 360px) {
+  .mobile-frame {
+    transform: scale(0.6);
+    width: 240px;
+    margin: 0 auto;
+  }
+}
+
+/* Touch-friendly interaction targets */
+@media (max-width: 768px) {
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px;
+  }
+  
+  .touch-button {
+    min-height: 48px;
+    padding: 12px 20px;
+    font-size: 16px;
+  }
+  
+  .touch-input {
+    min-height: 48px;
+    font-size: 16px;
+  }
+  
+  /* Prevent text selection on touch devices for UI elements */
+  .touch-target, .touch-button {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Improve touch scrolling */
+  .mobile-content {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Safe area handling for iOS */
+  .mobile-safe-area {
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+  
+  /* Prevent zoom on input focus (iOS Safari) */
+  input[type="text"],
+  input[type="url"],
+  input[type="email"],
+  textarea {
+    font-size: 16px !important;
+  }
+  
+  /* Improve button tap feedback */
+  .touch-button:active,
+  .touch-target:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}/* Pr
+eview Tab Animations */
+.preview-tab-panel {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preview-tab-panel[data-active="true"] {
+  animation: slideInUp 0.4s ease-out;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Web preview specific animations */
+.web-preview-container {
+  animation: scaleIn 0.4s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Mobile preview specific animations */
+.mobile-preview-container {
+  animation: bounceIn 0.5s ease-out;
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Tab switching smooth transitions */
+.tab-content-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.tab-content-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s ease-out;
+}
+
+.tab-content-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.tab-content-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 0.2s ease-in;
+}
+
+/* Enhanced mobile frame hover effects */
+.mobile-frame:hover {
+  transform: scale(1.02);
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+}
+
+/* Web preview hover effects */
+.web-preview-container:hover {
+  transform: scale(1.01);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
 }

@@ -5,11 +5,43 @@ import { eq, and, desc } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
-    const { profileId, title, url, icon } = await request.json();
+    const { profileId, title, url, description, icon } = await request.json();
 
+    // Validation
     if (!profileId || !title || !url) {
       return NextResponse.json(
         { error: "Profile ID, title, and URL are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate URL format
+    const urlRegex = /^https?:\/\/.+/;
+    if (!urlRegex.test(url)) {
+      return NextResponse.json(
+        { error: "URL must start with http:// or https://" },
+        { status: 400 }
+      );
+    }
+
+    // Validate field lengths
+    if (title.length > 100) {
+      return NextResponse.json(
+        { error: "Title must be 100 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    if (url.length > 2000) {
+      return NextResponse.json(
+        { error: "URL must be 2000 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    if (description && description.length > 200) {
+      return NextResponse.json(
+        { error: "Description must be 200 characters or less" },
         { status: 400 }
       );
     }
@@ -29,11 +61,11 @@ export async function POST(request: NextRequest) {
       .insert(schema.links)
       .values({
         profile_id: profileId,
-        title,
-        url,
-        icon: icon || null,
+        title: title.trim(),
+        url: url.trim(),
+        description: description?.trim() || null,
+        icon: icon?.trim() || null,
         order_index: nextOrderIndex,
-        created_at: new Date(),
       })
       .returning();
 
@@ -47,7 +79,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Link creation error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to create link. Please try again." },
       { status: 500 }
     );
   }
@@ -81,6 +113,84 @@ export async function GET(request: NextRequest) {
   }
 }
 
+export async function PUT(request: NextRequest) {
+  try {
+    const { linkId, title, url, description, icon } = await request.json();
+
+    // Validation
+    if (!linkId || !title || !url) {
+      return NextResponse.json(
+        { error: "Link ID, title, and URL are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate URL format
+    const urlRegex = /^https?:\/\/.+/;
+    if (!urlRegex.test(url)) {
+      return NextResponse.json(
+        { error: "URL must start with http:// or https://" },
+        { status: 400 }
+      );
+    }
+
+    // Validate field lengths
+    if (title.length > 100) {
+      return NextResponse.json(
+        { error: "Title must be 100 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    if (url.length > 2000) {
+      return NextResponse.json(
+        { error: "URL must be 2000 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    if (description && description.length > 200) {
+      return NextResponse.json(
+        { error: "Description must be 200 characters or less" },
+        { status: 400 }
+      );
+    }
+
+    // Update link
+    const updatedLink = await db
+      .update(schema.links)
+      .set({
+        title: title.trim(),
+        url: url.trim(),
+        description: description?.trim() || null,
+        icon: icon?.trim() || null,
+      })
+      .where(eq(schema.links.id, linkId))
+      .returning();
+
+    if (updatedLink.length === 0) {
+      return NextResponse.json(
+        { error: "Link not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { 
+        message: "Link updated successfully", 
+        link: updatedLink[0] 
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Link update error:", error);
+    return NextResponse.json(
+      { error: "Failed to update link. Please try again." },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -93,9 +203,17 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await db
+    const deletedLink = await db
       .delete(schema.links)
-      .where(eq(schema.links.id, linkId));
+      .where(eq(schema.links.id, linkId))
+      .returning();
+
+    if (deletedLink.length === 0) {
+      return NextResponse.json(
+        { error: "Link not found" },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
       { message: "Link deleted successfully" },
@@ -104,7 +222,7 @@ export async function DELETE(request: NextRequest) {
   } catch (error) {
     console.error("Link deletion error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to delete link. Please try again." },
       { status: 500 }
     );
   }
