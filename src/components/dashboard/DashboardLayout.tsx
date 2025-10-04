@@ -11,8 +11,6 @@ import {
   Center,
   Stack,
   Text,
-  AppShell,
-  Tabs,
   Button,
   Group,
 } from "@mantine/core";
@@ -21,8 +19,14 @@ import { notifications } from "@mantine/notifications";
 import { LeftPanel } from "./LeftPanel";
 import { RightPanel } from "./RightPanel";
 import { DashboardHeader } from "./DashboardHeader";
+import { FloatingActionButton } from "./FloatingActionButton";
+import { PageTransition } from "../animations/AnimatedComponents";
+import { ErrorBoundary } from "../error/ErrorBoundary";
+import { OfflineIndicator } from "../ui/OfflineIndicator";
+import { NonBlockingLoader } from "../ui/NonBlockingLoader";
+
 import type { Profile } from "../../../db/schema";
-import type { Link, DashboardState, EnhancedDashboardState, UserProfile, AnalyticsData, Category, LinkFormData } from "../../../types/dashboard";
+import type { Link, EnhancedDashboardState } from "../../../types/dashboard";
 import { fetchLinks as fetchLinksAction } from "../../lib/actions/links";
 
 export function DashboardLayout() {
@@ -195,10 +199,18 @@ export function DashboardLayout() {
       setDashboardState(prev => ({ ...prev, error: null }));
       const res = await fetch(`/api/profiles?userId=${userId}`);
       if (res.ok) {
-        const profileData = await res.json();
-        setProfile(profileData);
-        hasFetchedProfile.current = true;
-        lastUserId.current = userId;
+        const response = await res.json();
+        if (response.success && response.data) {
+          setProfile(response.data);
+          hasFetchedProfile.current = true;
+          lastUserId.current = userId;
+          // Set loading to false if no links need to be fetched
+          if (!response.data.id) {
+            setDashboardState(prev => ({ ...prev, isLoading: false }));
+          }
+        } else {
+          throw new Error("Invalid response format");
+        }
       } else if (res.status === 404) {
         // Profile doesn't exist, redirect to create profile
         router.push(`/create-profile?userId=${userId}`);
@@ -281,6 +293,25 @@ export function DashboardLayout() {
       fetchLinks();
     }
   }, [profile?.id]);
+
+  // Ensure loading is false when both profile and links are ready
+  useEffect(() => {
+    if (profile && hasFetchedLinks.current) {
+      setDashboardState(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [profile, dashboardState.links]);
+
+  // Fallback timeout to prevent infinite loading
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (dashboardState.isLoading && profile) {
+        console.warn("Dashboard loading timeout - forcing loading to false");
+        setDashboardState(prev => ({ ...prev, isLoading: false }));
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [dashboardState.isLoading, profile]);
 
   // Reset fetch flags when user changes
   useEffect(() => {
@@ -368,81 +399,95 @@ export function DashboardLayout() {
     );
   }
 
-  // Mobile layout with enhanced tab navigation
+  // Mobile layout with enhanced tab navigation (preserving left-right split)
   if (isMobile) {
     return (
-      <Box 
-        style={{ 
-          minHeight: "100vh", 
-          backgroundColor: "#ffffff",
-          transition: "all 0.3s ease"
-        }}
-      >
-        <DashboardHeader
-          profile={profile}
-          onProfileClick={() => setShowProfileSettings(true)}
-          onSettingsClick={() => setShowDashboardSettings(true)}
-        />
-        <AppShell
-          header={{ height: 0 }}
-          navbar={{ width: 0, breakpoint: "sm" }}
-          padding="xs"
+      <ErrorBoundary level="page" showDetails={process.env.NODE_ENV === 'development'}>
+        <Box 
+          style={{ 
+            minHeight: "100vh", 
+            backgroundColor: "#ffffff",
+            transition: "all 0.3s ease"
+          }}
+          className="safe-area-all"
         >
-          <AppShell.Main>
-            <Tabs 
-              value={activeTab} 
-              onChange={(value) => setActiveTab(value || "manage")} 
-              keepMounted={true} // Keep mounted to preserve state
-              style={{ height: "100vh", display: "flex", flexDirection: "column" }}
+          <DashboardHeader
+            profile={profile}
+            onProfileClick={() => setShowProfileSettings(true)}
+            onSettingsClick={() => setShowDashboardSettings(true)}
+          />
+          
+          <Box
+            style={{
+              height: "calc(100vh - 60px - env(safe-area-inset-bottom, 0px))",
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {/* Mobile Tab Navigation */}
+            <Box
+              style={{
+                display: "flex",
+                borderBottom: "1px solid #e9ecef",
+                backgroundColor: "white",
+                position: "sticky",
+                top: 0,
+                zIndex: 100,
+              }}
             >
-              <Tabs.List 
-                grow 
-                style={{ 
-                  position: "sticky", 
-                  top: 0, 
-                  zIndex: 100,
-                  backgroundColor: "#ffffff",
-                  borderBottom: "1px solid #e9ecef",
-                  padding: "8px",
-                  borderRadius: "8px 8px 0 0"
+              <Button
+                variant={activeTab === "manage" ? "filled" : "subtle"}
+                onClick={() => setActiveTab("manage")}
+                style={{
+                  flex: 1,
+                  borderRadius: 0,
+                  minHeight: "48px",
+                  fontSize: "14px",
+                  fontWeight: activeTab === "manage" ? 600 : 400,
                 }}
+                className="touch-target"
               >
-                <Tabs.Tab 
-                  value="manage"
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    padding: "12px 16px",
-                    minHeight: "44px", // Touch-friendly target
-                    borderRadius: "6px",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  Manage Links
-                </Tabs.Tab>
-                <Tabs.Tab 
-                  value="preview"
-                  style={{
-                    fontSize: "14px",
-                    fontWeight: 500,
-                    padding: "12px 16px",
-                    minHeight: "44px", // Touch-friendly target
-                    borderRadius: "6px",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  Preview
-                </Tabs.Tab>
-              </Tabs.List>
-
-              <Tabs.Panel 
-                value="manage" 
-                pt="md" 
-                style={{ 
-                  flex: 1, 
-                  overflow: "hidden",
-                  animation: activeTab === "manage" ? "slideInLeft 0.3s ease" : undefined
+                Manage Links
+              </Button>
+              <Button
+                variant={activeTab === "preview" ? "filled" : "subtle"}
+                onClick={() => setActiveTab("preview")}
+                style={{
+                  flex: 1,
+                  borderRadius: 0,
+                  minHeight: "48px",
+                  fontSize: "14px",
+                  fontWeight: activeTab === "preview" ? 600 : 400,
                 }}
+                className="touch-target"
+              >
+                Preview
+              </Button>
+            </Box>
+
+            {/* Content Area */}
+            <Box
+              style={{
+                flex: 1,
+                overflow: "hidden",
+                position: "relative",
+              }}
+            >
+              {/* Left Panel - Management Interface */}
+              <Box
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  transform: `translateX(${activeTab === "manage" ? "0%" : "-100%"})`,
+                  transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  overflow: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  padding: "16px",
+                }}
+                className="mobile-content"
               >
                 <LeftPanel
                   profile={profile}
@@ -458,15 +503,234 @@ export function DashboardLayout() {
                   updateLinkInState={updateLinkInState}
                   removeLinkFromState={removeLinkFromState}
                 />
-              </Tabs.Panel>
+              </Box>
 
-              <Tabs.Panel 
-                value="preview" 
-                pt="md"
+              {/* Right Panel - Preview Interface */}
+              <Box
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  transform: `translateX(${activeTab === "preview" ? "0%" : "100%"})`,
+                  transition: "transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                  overflow: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  padding: "16px",
+                }}
+                className="mobile-content"
+              >
+                <RightPanel
+                  profile={profile}
+                  links={dashboardState.links}
+                  isLoading={dashboardState.isLoading}
+                />
+              </Box>
+            </Box>
+          </Box>
+
+          {/* Profile Settings Modal */}
+          {showProfileSettings && (
+            <Box
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+              }}
+              onClick={() => setShowProfileSettings(false)}
+            >
+              <Box
+                className="mobile-modal"
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  maxWidth: '90vw',
+                  width: '100%',
+                  maxHeight: '80vh',
+                  overflow: 'auto',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Text size="lg" fw={600} mb="md">Profile Settings</Text>
+                <Text c="dimmed" mb="lg">
+                  Profile settings functionality will be implemented in a future task.
+                </Text>
+                <Group justify="flex-end">
+                  <Button 
+                    variant="light" 
+                    onClick={() => setShowProfileSettings(false)}
+                    className="touch-target"
+                  >
+                    Close
+                  </Button>
+                </Group>
+              </Box>
+            </Box>
+          )}
+
+          {/* Dashboard Settings Modal */}
+          {showDashboardSettings && (
+            <Box
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                backdropFilter: 'blur(4px)',
+                zIndex: 1000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1rem',
+              }}
+              onClick={() => setShowDashboardSettings(false)}
+            >
+              <Box
+                className="mobile-modal"
+                style={{
+                  backgroundColor: 'white',
+                  borderRadius: '16px',
+                  padding: '2rem',
+                  maxWidth: '90vw',
+                  width: '100%',
+                  maxHeight: '80vh',
+                  overflow: 'auto',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Text size="lg" fw={600} mb="md">Dashboard Settings</Text>
+                <Text c="dimmed" mb="lg">
+                  Dashboard settings functionality will be implemented in a future task.
+                </Text>
+                <Group justify="flex-end">
+                  <Button 
+                    variant="light" 
+                    onClick={() => setShowDashboardSettings(false)}
+                    className="touch-target"
+                  >
+                    Close
+                  </Button>
+                </Group>
+              </Box>
+            </Box>
+          )}
+
+          {/* Floating Action Button for Mobile */}
+          <Box
+            style={{
+              position: "fixed",
+              bottom: "20px",
+              right: "20px",
+              zIndex: 999,
+            }}
+          >
+            <Button
+              onClick={() => setIsAddingLink(true)}
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                backgroundColor: "#3B82F6",
+                border: "none",
+                boxShadow: "0 8px 25px rgba(59, 130, 246, 0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "24px",
+                color: "white",
+              }}
+              className="touch-target"
+            >
+              +
+            </Button>
+          </Box>
+
+          {/* Offline Indicator */}
+          <OfflineIndicator position="bottom-left" compact />
+
+          {/* Non-blocking Loading Indicators */}
+          <NonBlockingLoader position="top-right" />
+        </Box>
+      </ErrorBoundary>
+    );
+  }
+
+  // Desktop and tablet layout with enhanced responsive design
+  return (
+    <ErrorBoundary level="page" showDetails={process.env.NODE_ENV === 'development'}>
+      <PageTransition>
+        <Box 
+          style={{ 
+            minHeight: "100vh", 
+            backgroundColor: "#ffffff",
+            transition: "all 0.3s ease"
+          }}
+          className="layout-transition"
+        >
+          <DashboardHeader
+            profile={profile}
+            onProfileClick={() => setShowProfileSettings(true)}
+            onSettingsClick={() => setShowDashboardSettings(true)}
+          />
+          
+          <Container 
+            size={isDesktop ? "xl" : "lg"} 
+            px={isTablet ? "sm" : "md"} 
+            py={isTablet ? "sm" : "md"}
+          >
+            <Grid 
+              gutter={isTablet ? "md" : "lg"} 
+              style={{ 
+                minHeight: `calc(100vh - ${isTablet ? "1rem" : "2rem"})`,
+                transition: "all 0.3s ease"
+              }}
+            >
+              {/* Left Panel - Management Interface */}
+              <Grid.Col 
+                span={{ base: 12, md: 6, lg: 6 }}
                 style={{ 
-                  flex: 1, 
-                  overflow: "hidden",
-                  animation: activeTab === "preview" ? "slideInRight 0.3s ease" : undefined
+                  borderRight: isDesktop ? "1px solid #e9ecef" : "none",
+                  paddingRight: isDesktop ? "1rem" : "0",
+                  transition: "all 0.3s ease"
+                }}
+              >
+                <LeftPanel
+                  profile={profile}
+                  dashboardState={dashboardState}
+                  updateDashboardState={updateDashboardState}
+                  onRefreshLinks={fetchLinks}
+                  onRefreshProfile={forceRefreshProfile}
+                  setSelectedLink={setSelectedLink}
+                  setIsAddingLink={setIsAddingLink}
+                  setIsSaving={setIsSaving}
+                  clearError={clearError}
+                  addLinkToState={addLinkToState}
+                  updateLinkInState={updateLinkInState}
+                  removeLinkFromState={removeLinkFromState}
+                />
+              </Grid.Col>
+
+              {/* Right Panel - Preview Interface */}
+              <Grid.Col 
+                span={{ base: 12, md: 6, lg: 6 }}
+                style={{ 
+                  paddingLeft: isDesktop ? "1rem" : "0",
+                  transition: "all 0.3s ease"
                 }}
               >
                 <RightPanel
@@ -474,172 +738,9 @@ export function DashboardLayout() {
                   links={dashboardState.links}
                   isLoading={dashboardState.isLoading}
                 />
-              </Tabs.Panel>
-            </Tabs>
-          </AppShell.Main>
-        </AppShell>
-
-        {/* Profile Settings Modal */}
-        {showProfileSettings && (
-          <Box
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(4px)',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1rem',
-            }}
-            onClick={() => setShowProfileSettings(false)}
-          >
-            <Box
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                padding: '2rem',
-                maxWidth: '500px',
-                width: '100%',
-                maxHeight: '80vh',
-                overflow: 'auto',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Text size="lg" fw={600} mb="md">Profile Settings</Text>
-              <Text c="dimmed" mb="lg">
-                Profile settings functionality will be implemented in a future task.
-              </Text>
-              <Group justify="flex-end">
-                <Button variant="light" onClick={() => setShowProfileSettings(false)}>
-                  Close
-                </Button>
-              </Group>
-            </Box>
-          </Box>
-        )}
-
-        {/* Dashboard Settings Modal */}
-        {showDashboardSettings && (
-          <Box
-            style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(0, 0, 0, 0.5)',
-              backdropFilter: 'blur(4px)',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '1rem',
-            }}
-            onClick={() => setShowDashboardSettings(false)}
-          >
-            <Box
-              style={{
-                backgroundColor: 'white',
-                borderRadius: '12px',
-                padding: '2rem',
-                maxWidth: '500px',
-                width: '100%',
-                maxHeight: '80vh',
-                overflow: 'auto',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Text size="lg" fw={600} mb="md">Dashboard Settings</Text>
-              <Text c="dimmed" mb="lg">
-                Dashboard settings functionality will be implemented in a future task.
-              </Text>
-              <Group justify="flex-end">
-                <Button variant="light" onClick={() => setShowDashboardSettings(false)}>
-                  Close
-                </Button>
-              </Group>
-            </Box>
-          </Box>
-        )}
-      </Box>
-    );
-  }
-
-  // Desktop and tablet layout with enhanced responsive split panels
-  return (
-    <Box 
-      style={{ 
-        minHeight: "100vh", 
-        backgroundColor: "#ffffff",
-        transition: "all 0.3s ease"
-      }}
-    >
-      <DashboardHeader
-        profile={profile}
-        onProfileClick={() => setShowProfileSettings(true)}
-        onSettingsClick={() => setShowDashboardSettings(true)}
-      />
-      <Container 
-        size={isDesktop ? "xl" : "lg"} 
-        px={isTablet ? "sm" : "md"} 
-        py={isTablet ? "sm" : "md"}
-      >
-        <Grid 
-          gutter={isTablet ? "md" : "lg"} 
-          style={{ 
-            minHeight: `calc(100vh - ${isTablet ? "1rem" : "2rem"})`,
-            transition: "all 0.3s ease"
-          }}
-        >
-          {/* Left Panel - Management Interface */}
-          <Grid.Col 
-            span={{ base: 12, md: isTablet ? 12 : 6, lg: 6 }}
-            style={{ 
-              borderRight: isDesktop ? "1px solid #e9ecef" : "none",
-              paddingRight: isDesktop ? "1rem" : "0",
-              marginBottom: isTablet ? "1rem" : "0",
-              transition: "all 0.3s ease"
-            }}
-          >
-            <LeftPanel
-              profile={profile}
-              dashboardState={dashboardState}
-              updateDashboardState={updateDashboardState}
-              onRefreshLinks={fetchLinks}
-              onRefreshProfile={forceRefreshProfile}
-              setSelectedLink={setSelectedLink}
-              setIsAddingLink={setIsAddingLink}
-              setIsSaving={setIsSaving}
-              clearError={clearError}
-              addLinkToState={addLinkToState}
-              updateLinkInState={updateLinkInState}
-              removeLinkFromState={removeLinkFromState}
-            />
-          </Grid.Col>
-
-          {/* Right Panel - Preview Interface */}
-          <Grid.Col 
-            span={{ base: 12, md: isTablet ? 12 : 6, lg: 6 }}
-            style={{ 
-              paddingLeft: isDesktop ? "1rem" : "0",
-              transition: "all 0.3s ease"
-            }}
-          >
-            <RightPanel
-              profile={profile}
-              links={dashboardState.links}
-              isLoading={dashboardState.isLoading}
-            />
-          </Grid.Col>
-        </Grid>
-      </Container>
+              </Grid.Col>
+            </Grid>
+          </Container>
 
       {/* Profile Settings Modal */}
       {showProfileSettings && (
@@ -730,6 +831,27 @@ export function DashboardLayout() {
           </Box>
         </Box>
       )}
-    </Box>
+
+      {/* Floating Action Button */}
+      <FloatingActionButton
+        onAddLink={() => setIsAddingLink(true)}
+        onAddFeaturedLink={() => {
+          // TODO: Implement featured link creation
+          setIsAddingLink(true);
+        }}
+        onAddCategory={() => {
+          // TODO: Implement category creation
+          console.log("Add category");
+        }}
+      />
+
+      {/* Offline Indicator */}
+      <OfflineIndicator position="bottom-right" />
+
+      {/* Non-blocking Loading Indicators */}
+      <NonBlockingLoader position="top-right" />
+      </Box>
+    </PageTransition>
+    </ErrorBoundary>
   );
 }

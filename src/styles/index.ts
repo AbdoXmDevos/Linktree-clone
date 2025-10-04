@@ -9,6 +9,9 @@ export * from './design-tokens';
 // Export Mantine theme
 export { enhancedTheme } from './mantine-theme';
 
+// Export responsive utilities
+export * from './responsive-typography';
+
 // Type definitions for design tokens
 export type ColorScale = {
   50: string;

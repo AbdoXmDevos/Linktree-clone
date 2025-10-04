@@ -28,6 +28,8 @@ import { useMediaQuery } from "@mantine/hooks";
 import { useForm } from "@mantine/form";
 import { useDebouncedValue } from "@mantine/hooks";
 import { notifications } from "@mantine/notifications";
+import { useOptimisticUpdate } from "@/hooks/useOptimisticUpdate";
+import { useNonBlockingLoading } from "@/hooks/useNonBlockingLoading";
 import { 
   IconAlertCircle, 
   IconCheck, 
@@ -88,6 +90,10 @@ export function LinkForm({
   const [uploadedImage, setUploadedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const isMobile = useMediaQuery("(max-width: 768px)");
+  
+  // Optimistic updates and non-blocking loading
+  const { optimisticState, performOptimisticUpdate } = useOptimisticUpdate<Link>();
+  const { startLoading, stopLoading, isLoading: isNonBlockingLoading } = useNonBlockingLoading();
   
   // URL metadata fetching
   const { 
@@ -282,84 +288,108 @@ export function LinkForm({
 
 
   const handleSubmit = async (values: LinkFormData) => {
-    try {
-      await onSubmit(values);
-      
-      notifications.show({
-        title: editingLink ? "Link updated" : "Link added",
-        message: editingLink 
-          ? "Your link has been successfully updated" 
-          : "Your new link has been added successfully",
-        color: "green",
-        icon: <IconCheck size={16} />,
-        autoClose: 4000,
-      });
-      
-      form.reset();
-      setValidationResults({});
-      onClose();
-    } catch (error: any) {
-      console.error("Error submitting form:", error);
-      
-      // Enhanced error handling with specific error types
-      let errorTitle = "Error";
-      let errorMessage = editingLink 
-        ? "Failed to update link. Please try again." 
-        : "Failed to add link. Please try again.";
-      let showRetry = false;
-      
-      if (error?.type) {
-        switch (error.type) {
-          case 'validation':
-            errorTitle = "Validation Error";
-            errorMessage = error.message;
-            break;
-          case 'network':
-            errorTitle = "Connection Error";
-            errorMessage = error.message;
-            showRetry = error.retryable;
-            break;
-          case 'database':
-            errorTitle = "Database Error";
-            errorMessage = error.message;
-            break;
-          case 'not_found':
-            errorTitle = "Not Found";
-            errorMessage = error.message;
-            break;
-          case 'permission':
-            errorTitle = "Permission Error";
-            errorMessage = error.message;
-            break;
-          default:
-            errorTitle = "Unexpected Error";
-            errorMessage = error.message || errorMessage;
-            showRetry = error.retryable;
-        }
-      }
-      
-      notifications.show({
-        title: errorTitle,
-        message: errorMessage,
-        color: "red",
-        icon: <IconX size={16} />,
-        autoClose: showRetry ? 8000 : 5000,
-        withCloseButton: true,
-      });
+    const operationKey = editingLink ? `update-link-${editingLink.id}` : 'create-link';
+    
+    // Create optimistic data
+    const optimisticLink: Link = editingLink ? {
+      ...editingLink,
+      ...values,
+      updated_at: new Date(),
+    } : {
+      id: `temp-${Date.now()}`,
+      profile_id: '', // Will be set by server
+      created_at: new Date(),
+      updated_at: new Date(),
+      order_index: 0,
+      ...values,
+    } as Link;
 
-      // Show retry option for retryable errors
-      if (showRetry) {
-        setTimeout(() => {
+    startLoading(operationKey, {
+      message: editingLink ? 'Updating link...' : 'Creating link...',
+      showProgress: true,
+      allowCancel: true,
+    });
+
+    const result = await performOptimisticUpdate(
+      optimisticLink,
+      async () => {
+        return await onSubmit(values);
+      },
+      {
+        onSuccess: (result) => {
           notifications.show({
-            title: "Retry Available",
-            message: "You can try submitting the form again when your connection is restored.",
-            color: "blue",
-            icon: <IconInfoCircle size={16} />,
-            autoClose: 6000,
+            title: editingLink ? "Link updated" : "Link added",
+            message: editingLink 
+              ? "Your link has been successfully updated" 
+              : "Your new link has been added successfully",
+            color: "green",
+            icon: <IconCheck size={16} />,
+            autoClose: 4000,
           });
-        }, 1000);
+          
+          form.reset();
+          setValidationResults({});
+          onClose();
+        },
+        onError: (error: any) => {
+          console.error("Error submitting form:", error);
+          
+          // Enhanced error handling with specific error types
+          let errorTitle = "Error";
+          let errorMessage = editingLink 
+            ? "Failed to update link. Please try again." 
+            : "Failed to add link. Please try again.";
+          let showRetry = false;
+          
+          if (error?.type) {
+            switch (error.type) {
+              case 'validation':
+                errorTitle = "Validation Error";
+                errorMessage = error.message;
+                break;
+              case 'network':
+                errorTitle = "Connection Error";
+                errorMessage = error.message;
+                showRetry = error.retryable;
+                break;
+              case 'database':
+                errorTitle = "Database Error";
+                errorMessage = error.message;
+                break;
+              case 'not_found':
+                errorTitle = "Not Found";
+                errorMessage = error.message;
+                break;
+              case 'permission':
+                errorTitle = "Permission Error";
+                errorMessage = error.message;
+                break;
+              default:
+                errorTitle = "Unexpected Error";
+                errorMessage = error.message || errorMessage;
+                showRetry = error.retryable;
+            }
+          }
+          
+          notifications.show({
+            title: errorTitle,
+            message: errorMessage,
+            color: "red",
+            icon: <IconX size={16} />,
+            autoClose: showRetry ? 8000 : 5000,
+            withCloseButton: true,
+            action: showRetry ? {
+              label: 'Retry',
+              onClick: () => handleSubmit(values),
+            } : undefined,
+          });
+        },
+        retryAttempts: 3,
+        retryDelay: 1000,
       }
-    }
+    );
+
+    stopLoading(operationKey);
   };
 
   const handleClose = () => {

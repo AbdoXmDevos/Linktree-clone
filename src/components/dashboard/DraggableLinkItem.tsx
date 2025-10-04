@@ -7,6 +7,8 @@ import { IconEdit, IconTrash, IconExternalLink, IconLink, IconAlertCircle, IconG
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { Link } from "../../../types/dashboard";
+import { ContextMenu } from "./ContextMenu";
+import { notifications } from "@mantine/notifications";
 
 interface DraggableLinkItemProps {
   link: Link;
@@ -287,8 +289,9 @@ export function DraggableLinkItem({
           </Stack>
         </Group>
 
-        {/* Action Buttons */}
+        {/* Quick Actions and Context Menu */}
         <Group gap={isMobile ? "sm" : "xs"} style={{ flexShrink: 0 }}>
+          {/* Quick Visit Link */}
           <Tooltip label="Visit link" disabled={isMobile}>
             <ActionIcon
               variant="subtle"
@@ -302,33 +305,31 @@ export function DraggableLinkItem({
             </ActionIcon>
           </Tooltip>
           
-          <Tooltip label="Edit link" disabled={isMobile}>
-            <ActionIcon
-              variant="subtle"
-              color="dark"
-              size={isMobile ? "md" : "sm"}
-              className={isMobile ? "touch-target" : undefined}
-              onClick={handleClick}
-              data-action-button
-            >
-              <IconEdit size={isMobile ? 18 : 14} />
-            </ActionIcon>
-          </Tooltip>
-          
-          {onDelete && (
-            <Tooltip label="Delete link" disabled={isMobile}>
-              <ActionIcon
-                variant="subtle"
-                color="red"
-                size={isMobile ? "md" : "sm"}
-                className={isMobile ? "touch-target" : undefined}
-                onClick={handleDelete}
-                data-action-button
-              >
-                <IconTrash size={isMobile ? 18 : 14} />
-              </ActionIcon>
-            </Tooltip>
-          )}
+          {/* Context Menu */}
+          <div data-action-button>
+            <ContextMenu
+              link={link}
+              onEdit={onEdit}
+              onDelete={onDelete || (() => {})}
+              onCopyUrl={(url) => {
+                notifications.show({
+                  title: "Copied!",
+                  message: "Link URL copied to clipboard",
+                  color: "green",
+                });
+              }}
+              onPreview={(link) => {
+                window.open(link.url, '_blank', 'noopener,noreferrer');
+              }}
+              onShare={(link) => {
+                notifications.show({
+                  title: "Shared!",
+                  message: "Link shared successfully",
+                  color: "green",
+                });
+              }}
+            />
+          </div>
         </Group>
       </Group>
     </Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Stack, Card, Tabs, Box } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
 import { IconCheck, IconX } from "@tabler/icons-react";
@@ -11,6 +11,8 @@ import { DragDropLinkList } from "./DragDropLinkList";
 import { LinkForm } from "./LinkForm";
 import { ProfileForm } from "./ProfileForm";
 import { AnalyticsWidget } from "./AnalyticsWidget";
+import { SearchAndFilter } from "./SearchAndFilter";
+import { QuickActions } from "./QuickActions";
 import { createLink, updateLink, deleteLink } from "../../lib/actions/links";
 
 interface LeftPanelProps {
@@ -44,6 +46,14 @@ export function LeftPanel({
 }: LeftPanelProps) {
   const { links, selectedLink, isAddingLink, isSaving, error } = dashboardState;
   const [activeTab, setActiveTab] = useState<string | null>("profile");
+  const [filteredLinks, setFilteredLinks] = useState<Link[]>(links);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [savedSearches, setSavedSearches] = useState<Array<{
+    id: string;
+    name: string;
+    filters: any;
+    createdAt: Date;
+  }>>([]);
 
   const handleAddLink = () => {
     clearError();
@@ -273,6 +283,79 @@ export function LeftPanel({
     }
   };
 
+  const handleSaveSearch = (search: any) => {
+    setSavedSearches(prev => [...prev, search]);
+    // In a real app, you'd save this to the backend
+    localStorage.setItem('savedSearches', JSON.stringify([...savedSearches, search]));
+  };
+
+  const handleDeleteSavedSearch = (searchId: string) => {
+    setSavedSearches(prev => prev.filter(s => s.id !== searchId));
+    // In a real app, you'd delete this from the backend
+    const updated = savedSearches.filter(s => s.id !== searchId);
+    localStorage.setItem('savedSearches', JSON.stringify(updated));
+  };
+
+  // Quick Actions handlers
+  const handleBulkDelete = (linkIds: string[]) => {
+    linkIds.forEach(id => handleDeleteLink(id));
+  };
+
+  const handleBulkToggleFeatured = (linkIds: string[]) => {
+    // TODO: Implement bulk toggle featured
+    console.log("Bulk toggle featured:", linkIds);
+  };
+
+  const handleBulkCategorize = (linkIds: string[], category: string) => {
+    // TODO: Implement bulk categorize
+    console.log("Bulk categorize:", linkIds, category);
+  };
+
+  const handleBulkStyle = (linkIds: string[], style: any) => {
+    // TODO: Implement bulk style
+    console.log("Bulk style:", linkIds, style);
+  };
+
+  const handleBulkReorder = (linkIds: string[], direction: 'up' | 'down') => {
+    // TODO: Implement bulk reorder
+    console.log("Bulk reorder:", linkIds, direction);
+  };
+
+  const handleExportLinks = (linkIds: string[]) => {
+    const selectedLinks = links.filter(link => linkIds.includes(link.id));
+    const dataStr = JSON.stringify(selectedLinks, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = 'links.json';
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  // Load saved searches on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('savedSearches');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setSavedSearches(parsed.map((s: any) => ({
+          ...s,
+          createdAt: new Date(s.createdAt)
+        })));
+      } catch (error) {
+        console.error('Failed to load saved searches:', error);
+      }
+    }
+  }, []);
+
+  // Update filtered links when original links change
+  useEffect(() => {
+    if (!searchQuery && filteredLinks.length !== links.length) {
+      setFilteredLinks(links);
+    }
+  }, [links, searchQuery, filteredLinks.length]);
+
   const handleProfileSubmit = async (profileData: any) => {
     try {
       setIsSaving(true);
@@ -396,13 +479,25 @@ export function LeftPanel({
                 <LinkManagementHeader
                   username={profile.username}
                   linkCount={links.length}
+                  filteredCount={filteredLinks.length}
+                  searchQuery={searchQuery}
                   onAddLink={handleAddLink}
                 />
               </Card>
 
+              {/* Search and Filter */}
+              <SearchAndFilter
+                links={links}
+                onFilteredLinksChange={setFilteredLinks}
+                onSearchChange={setSearchQuery}
+                savedSearches={savedSearches}
+                onSaveSearch={handleSaveSearch}
+                onDeleteSavedSearch={handleDeleteSavedSearch}
+              />
+
               {/* Links List */}
               <DragDropLinkList
-                links={links}
+                links={filteredLinks}
                 selectedLink={selectedLink}
                 selectedLinks={dashboardState.selectedLinks || []}
                 onEditLink={handleEditLink}
@@ -417,9 +512,11 @@ export function LeftPanel({
                 }}
                 profileId={profile.id}
                 onLinksReorder={(reorderedLinks) => {
+                  // Update the original links array, not the filtered one
                   updateDashboardState({ links: reorderedLinks });
                 }}
                 onLinksUpdate={(updatedLinks) => {
+                  // Update the original links array, not the filtered one
                   updateDashboardState({ links: updatedLinks });
                 }}
               />
@@ -446,6 +543,19 @@ export function LeftPanel({
         editingLink={selectedLink}
         isLoading={isSaving}
         error={error}
+      />
+
+      {/* Quick Actions for Bulk Operations */}
+      <QuickActions
+        selectedLinks={dashboardState.selectedLinks || []}
+        links={links}
+        onBulkDelete={handleBulkDelete}
+        onBulkToggleFeatured={handleBulkToggleFeatured}
+        onBulkCategorize={handleBulkCategorize}
+        onBulkStyle={handleBulkStyle}
+        onBulkReorder={handleBulkReorder}
+        onExportLinks={handleExportLinks}
+        onClearSelection={() => updateDashboardState({ selectedLinks: [] })}
       />
     </Stack>
   );

@@ -1,6 +1,7 @@
 /* Import design system styles */
 @import '../styles/css-variables.css';
 @import '../styles/utilities.css';
+@import '../styles/responsive-utilities.css';
 
 * {
   box-sizing: border-box;
@@ -164,6 +165,19 @@ body {
     opacity: 1;
     transform: translateX(0);
   }
+}
+
+/* Mobile panel slide transitions */
+.mobile-panel-slide {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: transform;
+}
+
+/* Mobile content scrolling */
+.mobile-content {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 
 /* Responsive layout transitions */

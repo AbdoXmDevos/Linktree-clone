@@ -4,6 +4,7 @@ import { Stack, Text, Button, Card, Title, Group, ScrollArea, Loader, Alert, Che
 import { IconPlus, IconAlertCircle, IconCheck, IconX } from "@tabler/icons-react";
 import { useState, useCallback, useEffect } from "react";
 import { notifications } from "@mantine/notifications";
+import { useOptimisticLinks } from "@/hooks/useOptimisticLinks";
 import {
   DndContext,
   closestCenter,
@@ -59,6 +60,17 @@ export function DragDropLinkList({
   const [localSelectedLinks, setLocalSelectedLinks] = useState<string[]>(selectedLinks);
   const [isBulkOperating, setIsBulkOperating] = useState(false);
   const [lastClickedIndex, setLastClickedIndex] = useState<number | null>(null);
+
+  // Optimistic link operations
+  const {
+    optimisticState,
+    reorderLinks: optimisticReorderLinks,
+    bulkUpdateLinks: optimisticBulkUpdateLinks,
+    deleteLink: optimisticDeleteLink,
+  } = useOptimisticLinks(localLinks, (updatedLinks) => {
+    setLocalLinks(updatedLinks);
+    onLinksUpdate?.(updatedLinks);
+  });
 
   // Update local state when props change
   useEffect(() => {

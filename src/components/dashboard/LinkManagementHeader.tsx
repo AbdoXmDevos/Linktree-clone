@@ -2,21 +2,25 @@
 
 import { Group, Title, Text, Button, Stack, Badge } from "@mantine/core";
 import { useMediaQuery } from "@mantine/hooks";
-import { IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconPlus } from "@tabler/icons-react";
 
 interface LinkManagementHeaderProps {
   username: string;
   linkCount: number;
+  filteredCount?: number;
+  searchQuery?: string;
   onAddLink: () => void;
 }
 
-export function LinkManagementHeader({ 
-  username, 
-  linkCount, 
-  onAddLink 
+export function LinkManagementHeader({
+  username,
+  linkCount,
+  filteredCount,
+  searchQuery,
+  onAddLink
 }: LinkManagementHeaderProps) {
   const isMobile = useMediaQuery("(max-width: 768px)");
-  
+
   return (
     <Stack gap="md">
       {/* Main Header */}
@@ -33,8 +37,15 @@ export function LinkManagementHeader({
               @{username}
             </Text>
             <Badge color="dark" variant="light" size="sm">
-              {linkCount} {linkCount === 1 ? 'link' : 'links'}
+              {typeof filteredCount !== 'undefined' && filteredCount !== linkCount 
+                ? `${filteredCount} of ${linkCount}` 
+                : `${linkCount}`} {linkCount === 1 ? 'link' : 'links'}
             </Badge>
+            {searchQuery && (
+              <Badge color="blue" variant="light" size="sm">
+                Searching: "{searchQuery}"
+              </Badge>
+            )}
           </Group>
         </Stack>
       </Group>
@@ -58,13 +69,7 @@ export function LinkManagementHeader({
         Add New Link
       </Button>
 
-      {/* Search/Filter Placeholder for Future Enhancement */}
-      <Group gap="sm" style={{ opacity: 0.6 }}>
-        <IconSearch size={16} color="var(--mantine-color-dark-4)" />
-        <Text size="sm" c="dark.4">
-          Search and filter coming soon...
-        </Text>
-      </Group>
+
     </Stack>
   );
 }
